@@ -452,7 +452,7 @@ FilterSpecLog <- function(spec,
 #' Preserves the mean variance of the cluster so that is can be compared with 
 #' e.g. instrumental data, but avoids bias to SNR estimate if each recorder had
 #'  a different sensitivity.
-#'
+#' @inheritParams SpecMTM
 #' @return
 #' @export
 #'
@@ -460,15 +460,9 @@ FilterSpecLog <- function(spec,
 SNRStack <- function(x, bin_width,
                      prefilter = FALSE,
                      logsmooth = FALSE,
+                     k = 1, nw = 0,
                      #equalise_mean = FALSE,
                      equalise_var = FALSE) {
-  
-  
-  # if (equalise_mean){
-  #   x <- apply(x, MARGIN = 2, function(i) {
-  #     i - mean(i, na.rm = TRUE)
-  #   })
-  # }
   
   
   # equalise the variance of all records in a cluster
@@ -494,11 +488,11 @@ SNRStack <- function(x, bin_width,
   n <- mean(n, na.rm = TRUE)
   
   # mean record spectrum
-  S_record <- PaleoSpec::SpecACF(x, bin.width = bin_width)
+  S_record <- SpecACF(x, bin.width = bin_width, k = k, nw = nw)
   # spectrum of the stack
-  S_stack <- PaleoSpec::SpecACF(rowMeans(x, na.rm = TRUE),
-                                bin.width = bin_width
-  )
+  S_stack <- SpecACF(rowMeans(x, na.rm = TRUE),
+                     bin.width = bin_width, k = k, nw = nw)
+  
   
   
   # Spec of noise
@@ -506,7 +500,7 @@ SNRStack <- function(x, bin_width,
   S_noise$spec <- (S_record$spec - S_stack$spec) / (1 - 1 / n)
   
   # Spec of common signal (climate)
-  S_clim <- S_stack
+  S_clim <- S_record
   S_clim$spec <- S_record$spec - S_noise$spec
   
   
@@ -565,14 +559,25 @@ SNRStack <- function(x, bin_width,
   S_stack <- PaleoSpec::AddConfInterval(S_stack)
   S_proxy <- PaleoSpec::AddConfInterval(S_record)
   
+  if (logsmooth == FALSE){
+    spec_list <- list(
+      S_noise = Spec2DF(S_noise),
+      S_clim = Spec2DF(S_clim),
+      S_proxy = Spec2DF(S_record),
+      S_stack = Spec2DF(S_stack),
+      SignalNoise = Spec2DF(S_SNR)
+    )  
+  } else {
+    spec_list <- list(
+      S_noise = Spec2DF(S_noise_f),
+      S_clim = Spec2DF(S_clim_f),
+      S_proxy = Spec2DF(S_record_f),
+      S_stack = Spec2DF(S_stack_f),
+      SignalNoise = Spec2DF(S_SNR)
+    )
+  }
   
-  spec_list <- list(
-    S_noise = Spec2DF(S_noise),
-    S_clim = Spec2DF(S_clim),
-    S_proxy = Spec2DF(S_record),
-    S_stack = Spec2DF(S_stack),
-    SignalNoise = Spec2DF(S_SNR)
-  )
+  
   
   return(spec_list)
 }
@@ -592,6 +597,22 @@ SpecRatio <- function(S1, S2){
   return(S3)
 }
 
+
+
+AddConfIntervalRatio <- function(spec, pval = 0.05, MINVALUE = 1e-10) {
+  
+  #is.spectrum(spec)
+  
+  spec$lim.1 <- qf(c(1 - pval / 2), spec$dof1, spec$dof2) * spec$spec
+  spec$lim.2 <- qf(c(pval / 2), spec$dof1, spec$dof2) * spec$spec 
+  
+  spec$lim.1[spec$lim.1 < MINVALUE] <- MINVALUE
+  spec$lim.2[spec$lim.2 < MINVALUE] <- MINVALUE
+  
+  return(spec)
+  
+}
+
 AddConfIntervalRatio2 <- function(spec, pval = 0.05, MINVALUE = 1e-10) {
   
   #is.spectrum(spec)
@@ -605,6 +626,7 @@ AddConfIntervalRatio2 <- function(spec, pval = 0.05, MINVALUE = 1e-10) {
   return(spec)
   
 }
+
 
 ### plotting functions ------
 
@@ -764,5 +786,20 @@ gg_spec2 <- function(x, gg = NULL,
   p
 }
 
+## Utilities ----
+
+summarise_q_2 <- function (dat, var, probs = 
+                             c(0.025, 0.159, 0.25, 0.5, 0.75, 0.841, 0.975)) 
+{
+  dat %>% dplyr::summarise(
+    mean = mean({{ var }}, na.rm = TRUE),
+    sd = stats::sd({{ var }}, na.rm = TRUE),
+    n = sum(is.na({{ var }}) == FALSE),
+    x = stats::quantile({{ var }}, probs, na.rm = TRUE), 
+    q = paste0(round(100 * probs, 1), "%")
+  ) %>% 
+    tidyr::pivot_wider(names_from = .data$q, values_from = .data$x) %>% 
+    dplyr::as_tibble()
+}
 
 
