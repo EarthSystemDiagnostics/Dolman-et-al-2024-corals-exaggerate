@@ -28,6 +28,7 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
 library(tidyverse)
 library(ggplot2)
 library(patchwork)
+library(progress)
 ```
 
 ## Required packages from Github
@@ -950,14 +951,13 @@ BootAndSummarise <- function(dat) {
 
 
 #### Load cached bootstrap samples if present - avoid re-running long-running calculation
+#### Runs with reduced number of replication (100) for speed. 10000 replications used in manuscript
 
 ```{r load_boot, cache.lazy = FALSE}
-library(progress)
-
 if (file.exists("..data/coral_specs_reg_mean_boot.RData") == FALSE | file.exists("..data/coral_specs_reg_mean_boot_degC.RData") == FALSE) {
 
   if (file.exists("../data/coral_pair_specs_boot.RData") == FALSE) {
-  n_reps <- 10000
+  n_reps <- 100
   pb <- progress_bar$new(total = n_reps)
 
   foo <- function(x) {
@@ -1373,7 +1373,6 @@ coral_specs_varsub <- coral_specs_var_fband %>%
   rename(a = paleoData_TSid_a, b = paleoData_TSid_b) %>% 
   pivot_longer(cols = c(a, b), names_to = "member", values_to = "paleoData_TSid")
 ```
-
 
 ```{r}
 if (file.exists("../data/coral_pair_var_boot.RData") == FALSE) {
