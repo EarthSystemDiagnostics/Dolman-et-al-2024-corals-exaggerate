@@ -791,7 +791,7 @@ gg_spec2 <- function(x, gg = NULL,
 summarise_q_2 <- function (dat, var, probs = 
                              c(0.025, 0.159, 0.25, 0.5, 0.75, 0.841, 0.975)) 
 {
-  dat %>% dplyr::summarise(
+  dat %>% dplyr::reframe(
     mean = mean({{ var }}, na.rm = TRUE),
     sd = stats::sd({{ var }}, na.rm = TRUE),
     n = sum(is.na({{ var }}) == FALSE),
