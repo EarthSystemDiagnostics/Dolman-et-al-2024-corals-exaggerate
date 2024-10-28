@@ -1,10 +1,12 @@
 ---
 title: "Analysis for Dolman et al 2024 - Corals Exaggerate - pairs"
 format:
-  pdf:
-    code-fold: false
-always_allow_html: yes
-toc: true
+    html:
+      toc: true
+    pdf:
+      code-fold: false
+      always_allow_html: yes
+      toc: true
 knitr:
   opts_chunk:
     fig.path: figures/
@@ -17,7 +19,7 @@ execute:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
-                      #cache = TRUE,
+                      cache = TRUE,
                       fig.width = 7, fig.height = 4,
                       dev.args = list(png = list(type = "cairo")))
 ```
@@ -1644,7 +1646,7 @@ comp_names <- tibble(
 
 ## Fig 3
 
-```{r}
+```{r, fig.width=7, fig.height=5}
 c_specs_var_comb %>% 
   left_join(., comp_names) %>% 
   mutate(slope = ifelse(paleoData_variableName == "d18O", 0.22, 0.06)) %>% 
