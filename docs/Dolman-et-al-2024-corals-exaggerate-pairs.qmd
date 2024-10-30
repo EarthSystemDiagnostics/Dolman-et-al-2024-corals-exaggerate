@@ -27,10 +27,12 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
 ## Required CRAN packages
 
 ```{r load_packages}
-library(tidyverse)
+library(dplyr)
+library(tidyr)
 library(ggplot2)
 library(patchwork)
 library(progress)
+library(ccaPP)
 ```
 
 ## Required packages from Github
@@ -68,7 +70,9 @@ min_rho <- 0.99
 SST_prod_to_use <- "SST_OISST2_dis"
 
 # use cached bootstrap?
-use_cache = TRUE
+use_cache = FALSE
+
+n_boot <- 100
 ```
 
 # Load paired coral data
@@ -135,7 +139,7 @@ stopifnot(
 ## OISST correlation between all pairs
 
 ```{r}
-OISST_ann <- coralclimatedata::OISST2_ch2k_remap_int %>% 
+OISST_ann <- readRDS("../data/OISST2_ch2k_remap_int.rds") %>% 
   group_by(paleoData_ch2kCoreCode, year) %>% 
   summarise(SST_OISST2_dis = mean(SST_OISST2_dis, na.rm = TRUE))
 
@@ -149,8 +153,11 @@ OISST_ann_pairs <- coral_pairs_sub %>%
          member, year, SST_OISST2_dis) %>% 
   pivot_wider(names_from = member, values_from = SST_OISST2_dis) %>% 
   group_by(pair) %>% 
-   mutate(a2 = pracma::detrend(a),
-          b2 = pracma::detrend(b)
+   # mutate(a2 = pracma::detrend(a),
+   #        b2 = pracma::detrend(b)
+   #        ) %>% 
+     mutate(a2 = residuals(lm(a~year)),
+          b2 = residuals(lm(b~year))
           )
 
 OISST_pair_rho <- OISST_ann_pairs %>% 
@@ -987,7 +994,7 @@ if (file.exists("..data/coral_specs_reg_mean_boot.RData") == FALSE | file.exists
     use_cache == FALSE) {
   if (file.exists("../data/coral_pair_specs_boot.RData") == FALSE | 
       use_cache == FALSE) {
-  n_reps <- 100
+  n_reps <- n_boot
   pb <- progress_bar$new(total = n_reps)
 
   foo <- function(x) {
@@ -1388,7 +1395,7 @@ coral_specs_varsub <- coral_specs_var_fband %>%
 ```{r}
 if (file.exists("../data/coral_pair_var_boot.RData") == FALSE |
     use_cache == FALSE) {
-  n_reps <- 10000
+  n_reps <- n_boot
   pb <- progress_bar$new(total = n_reps)
 
   foo2 <- function(x) {
