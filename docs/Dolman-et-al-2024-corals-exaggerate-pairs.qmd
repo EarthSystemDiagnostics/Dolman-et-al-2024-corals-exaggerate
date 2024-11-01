@@ -20,7 +20,7 @@ execute:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       cache = TRUE,
-                      fig.width = 7, fig.height = 4,
+                      fig.width = 8, fig.height = 5,
                       dev.args = list(png = list(type = "cairo")))
 ```
 
@@ -70,7 +70,7 @@ min_rho <- 0.99
 SST_prod_to_use <- "SST_OISST2_dis"
 
 # use cached bootstrap?
-use_cache = FALSE
+use_cache = TRUE
 
 n_boot <- 100
 ```
@@ -290,7 +290,8 @@ ins_ann_long <- sub_ann %>%
          complete.cases(SST_OISST2_dis)) %>% 
   ggplot(aes(x = year.dec, y = proxy)) +
   geom_line(aes(colour = "SrCa")) +
-  geom_line(aes(y = SST_OISST2_dis * -0.06 + cfs_OISST[1], colour = "OISSTv2")) +
+  geom_line(aes(y = SST_OISST2_dis * -0.06 + cfs_OISST[1],
+                colour = "OISSTv2")) +
   theme_bw() +
   theme(panel.grid = element_blank(),
         legend.position = "none",
@@ -298,7 +299,8 @@ ins_ann_long <- sub_ann %>%
         plot.background = element_rect(fill='transparent', color=NA)
         ) +
   scale_color_manual(values = c(pal_coral_proxies, OISSTv2 = "#66a61e")) +
-  labs(x = "Year CE", y = "Annual mean Sr/Ca [mmol/mol]", colour = "", linetype = "")
+  labs(x = "Year CE", y = "Annual mean Sr/Ca [mmol/mol]",
+       colour = "", linetype = "")
 
 
 patchwork::wrap_plots(ins_mon_long, ins_ann_long, ncol = 1)
@@ -340,7 +342,8 @@ SESD <- function(S, n){
 
 coral_pairs_sub_ann <- coral_pairs_once_SST_long %>% 
   filter(complete.cases(proxy, SST)) %>% 
-  group_by(SST_product, paleoData_variableName, paleoData_ch2kCoreCode, paleoData_TSid,
+  group_by(SST_product, paleoData_variableName,
+           paleoData_ch2kCoreCode, paleoData_TSid,
            paleoData_archiveSpecies, genus, year) %>% 
   #select(-pair) %>% 
   distinct() %>% 
@@ -418,12 +421,12 @@ fig_sd_mon <- month_SD %>%
 
 ```{r}
 highlt_ann <- ann_SD %>% 
-  filter(paleoData_ch2kCoreCode == "FL17DTO01", paleoData_variableName == "SrCa")%>% 
+  filter(paleoData_ch2kCoreCode == "FL17DTO01",
+         paleoData_variableName == "SrCa")%>% 
   filter(SST_product %in% SST_prod_to_use)
 
 fig_sd_ann <- ann_SD %>% 
   filter(SST_product %in% SST_prod_to_use) %>% 
-  #filter(paleoData_TSid %in% c("AL16YUC01_SrCa", "AL16PUR02_SrCa") == FALSE) %>% 
   filter(paleoData_variableName == "SrCa") %>% 
   ggplot(aes(x = sd_SST, y = sd_proxy, group = paleoData_ch2kCoreCode)) +
   geom_linerange(aes(ymin = sd_proxy - se_sd_proxy, 
@@ -432,9 +435,11 @@ fig_sd_ann <- ann_SD %>%
                      xmax = sd_SST + se_sd_SST), alpha = 0.5) +
   geom_point(alpha = 0.5)+
   # highlight inset
-  geom_linerange(data = highlt_ann, colour = "Red", aes(ymin = sd_proxy - se_sd_proxy, 
+  geom_linerange(data = highlt_ann, colour = "Red",
+                 aes(ymin = sd_proxy - se_sd_proxy, 
                       ymax = sd_proxy + se_sd_proxy)) + 
-  geom_linerange(data = highlt_ann, colour = "Red", aes(xmin = sd_SST - se_sd_SST,
+  geom_linerange(data = highlt_ann, colour = "Red",
+                 aes(xmin = sd_SST - se_sd_SST,
                      xmax = sd_SST + se_sd_SST)) +
   geom_point(data = highlt_ann, colour = "Red", size = 3) +
 
@@ -444,7 +449,8 @@ fig_sd_ann <- ann_SD %>%
   coord_fixed(ratio = 1/0.06) +
   expand_limits(x = c(0, 1.1), y = c(0, 0.06*1.1)) +
   theme(panel.grid = element_blank(), legend.position = "none") +
-  labs(x = "SD annual mean OISSTv2 [°C]", y = "SD annual mean Sr/Ca [mmol/mol]") +
+  labs(x = "SD annual mean OISSTv2 [°C]",
+       y = "SD annual mean Sr/Ca [mmol/mol]") +
   scale_color_brewer("", type = "qual", palette = "Set2")#+
   #facet_wrap(~SST_product)
 
@@ -463,9 +469,11 @@ fig_sd_dec <- dec_SD %>%
                      xmax = sd_SST + se_sd_SST), alpha = 0.5) +
   geom_point(alpha = 0.5)+
   # highlight inset
-  geom_linerange(data = highlt_ann, colour = "Red", aes(ymin = sd_proxy - se_sd_proxy, 
+  geom_linerange(data = highlt_ann, colour = "Red",
+                 aes(ymin = sd_proxy - se_sd_proxy, 
                       ymax = sd_proxy + se_sd_proxy)) + 
-  geom_linerange(data = highlt_ann, colour = "Red", aes(xmin = sd_SST - se_sd_SST,
+  geom_linerange(data = highlt_ann, colour = "Red",
+                 aes(xmin = sd_SST - se_sd_SST,
                      xmax = sd_SST + se_sd_SST)) +
   geom_point(data = highlt_ann, colour = "Red", size = 3) +
 
@@ -477,14 +485,15 @@ fig_sd_dec <- dec_SD %>%
               ) +
   expand_limits(x = c(0, 0.15*1/0.06), y = c(0, 2 * 0.06)) +
   theme(panel.grid = element_blank(), legend.position = "none") +
-  labs(x = "SD decadal mean OISSTv2 [°C]", y = "SD decadal mean Sr/Ca [mmol/mol]") +
+  labs(x = "SD decadal mean OISSTv2 [°C]",
+       y = "SD decadal mean Sr/Ca [mmol/mol]") +
   scale_color_brewer("", type = "qual", palette = "Set2")#+
   #facet_wrap(~SST_product)
 
 fig_sd_dec
 ```
 
-## Fig 1bc ----
+## Fig 1bc 
 
 ```{r fig_show_issue, fig.width=8}
 l <- fig_sd_mon+
@@ -547,7 +556,8 @@ fig_sd_mon_Genus <- month_SD %>%
   theme_bw() +
   coord_fixed(ratio = 1/0.06) +
   theme(panel.grid = element_blank(), legend.position = "none") +
-  labs(x = "SD annual cycle OISSTv2 [°C]", y = "SD annual cycle Sr/Ca [mmol/mol]", colour = "Genus")+
+  labs(x = "SD annual cycle OISSTv2 [°C]",
+       y = "SD annual cycle Sr/Ca [mmol/mol]", colour = "Genus") +
   scale_color_brewer("", type = "qual", palette = "Set2") 
 ```
 
@@ -569,7 +579,9 @@ fig_sd_ann_Genus <- ann_SD %>%
   #expand_limits(x = c(0, 0.085*1/0.06), ) +
   theme(panel.grid = element_blank(),
         legend.text = element_text(face = "italic")) +
-  labs(x = "SD annual mean OISSTv2 [°C]", y = "SD annual mean Sr/Ca [mmol/mol]", colour = "Genus") +
+  labs(x = "SD annual mean OISSTv2 [°C]", 
+       y = "SD annual mean Sr/Ca [mmol/mol]", 
+       colour = "Genus") +
   scale_color_brewer("", type = "qual", palette = "Set2")
 
 ```
@@ -594,7 +606,8 @@ fig_sd_mon_d18O_Genus <- month_SD %>%
   theme_bw() +
   coord_fixed(ratio = 1/0.22) +
   theme(panel.grid = element_blank(), legend.position = "none") +
-  labs(x = "SD annual cycle OISSTv2 [°C]", y = expression("SD annual cycle "*delta^18*O*" [‰]"),
+  labs(x = "SD annual cycle OISSTv2 [°C]",
+       y = expression("SD annual cycle "*delta^18*O*" [‰]"),
        colour = "Genus") +
   scale_color_brewer("", type = "qual", palette = "Set2")
 ```
@@ -617,7 +630,8 @@ fig_sd_ann_d18O_Genus <- ann_SD %>%
   coord_fixed(ratio = 1/0.22) +
   expand_limits(x = c(0, 1.3), y = c(0, 0.22*1.3)) +
   theme(panel.grid = element_blank(), legend.position = "none") +
-  labs(x = "SD annual mean OISSTv2 [°C]", y = expression("SD annual mean "*delta^18*O*" [‰]"),
+  labs(x = "SD annual mean OISSTv2 [°C]",
+       y = expression("SD annual mean "*delta^18*O*" [‰]"),
        colour = "Genus") +
   scale_color_brewer("", type = "qual", palette = "Set2")
 ```
@@ -635,7 +649,7 @@ patchwork::wrap_plots(fig_sd_mon_Genus, fig_sd_ann_Genus,
 
 
 
-# Start of spectral analysis
+# Spectral analysis
 
 ## Bin proxy values 
 
@@ -649,7 +663,8 @@ coral_pairs_binned <- coral_pairs_sub %>%
   group_by(pair, paleoData_variableName) %>% 
   mutate(min.age = min(month_CE), max.age = max(month_CE)) %>%
   arrange(month_CE) %>%
-  group_by(resolution, pair, dist_km, paleoData_variableName, paleoData_TSid) %>%
+  group_by(resolution, pair, dist_km,
+           paleoData_variableName, paleoData_TSid) %>%
   reframe(
     BinTimeseries(month_CE, proxy,
                   bin.width = bin_width[1],
@@ -872,7 +887,8 @@ coral_specs <- coral_pairs_binned_wide %>%
 ```{r}
 # interpolated each to same freq axis
 coral_specs_reg <- coral_specs %>% 
- group_by(spec_id, resolution, bin.width, pair, dist_km, paleoData_variableName,
+ group_by(spec_id, resolution, bin.width, pair, dist_km, 
+          paleoData_variableName,
           paleoData_TSid_a, paleoData_TSid_b) %>% 
   do({
     min_f <- min(.$freq)
@@ -943,7 +959,7 @@ coral_specs_reg_mean_degC <- coral_specs_reg_mean %>%
   as_spec_df() 
 ```
 
-# Record-wise bootstrap ------
+# Record-wise bootstrap
 
 ```{r}
 coral_specs_distsub <- coral_specs_reg %>% 
@@ -1058,7 +1074,7 @@ saveRDS(coral_specs_reg_mean_boot_degC,
 ```
 
 
-# Power spectrum figures ------
+## Power spectrum figures 
 
 
 ```{r}
@@ -1074,7 +1090,7 @@ pairs_per_freq <- coral_specs_reg %>%
 ```
 
 
-## Fig 2b: number of pairs at each timescale
+### Fig 2b: number of pairs at each timescale
 
 ```{r}
 fig_no_pairs <- pairs_per_freq %>% 
@@ -1083,7 +1099,8 @@ fig_no_pairs <- pairs_per_freq %>%
   geom_line(aes(y = n_pairs, linetype = "No. pairs")) +
   geom_line(aes(y = n_records, linetype = "No. unique records")) +
   scale_x_log10("Frequency [1/years]", 
-                sec.axis = sec_axis(transform = ~1/., name = "Timescale [years]")) +
+                sec.axis = sec_axis(transform = ~1/.,
+                                    name = "Timescale [years]")) +
   #scale_y_continuous(breaks = c(3, 10, 20, 30, 40)) +
   expand_limits(y = c(0, 70)) +
   facet_wrap(~paleoData_variableName, labeller = Spec_SrCa_d18O_labeller) +
@@ -1170,11 +1187,12 @@ PlotSNRStackBoot <- function(coral_dat, SST_dat,
 
 
 ```{r}
-PlotSNRStackBoot_byVar <- function(coral_dat, SST_dat, 
-                                   components = c("S_clim", "S_proxy", "S_noise"),
-                                   f_range = NULL,
-                                   statistic = c("spec_mean", "spec_median"),
-                                   plot_SST = TRUE) {
+PlotSNRStackBoot_byVar <- function(
+    coral_dat, SST_dat, 
+    components = c("S_clim", "S_proxy", "S_noise"),
+    f_range = NULL,
+    statistic = c("spec_mean", "spec_median"),
+    plot_SST = TRUE) {
   statistic_type <- match.arg(statistic)
 
   if (is.null(f_range)) {
@@ -1249,7 +1267,7 @@ PlotSNRStackBoot_byVar <- function(coral_dat, SST_dat,
 ```
 
 
-## Fig S2
+### Fig S2
 
 ```{r, warning=FALSE}
 fig_SNR_full_Freq <- PlotSNRStackBoot(
@@ -1262,26 +1280,26 @@ fig_SNR_full_Freq
 
 
 ```{r, warning=FALSE}
-fig_S_Clim_Instr_degC <- PlotSNRStackBoot(coral_specs_reg_mean_boot_degC, ERSST_specs_reg_mean,
-  statistic = "spec_mean",
-  components = c("S_clim", "S_proxy"),
-  f_range = c(1 / 100, 1 / 2)
-)
+fig_S_Clim_Instr_degC <- PlotSNRStackBoot(coral_specs_reg_mean_boot_degC,
+                                          ERSST_specs_reg_mean,
+                                          statistic = "spec_mean",
+                                          components = c("S_clim", "S_proxy"),
+                                          f_range = c(1 / 100, 1 / 2)
+                                          )
 ```
 
 
 ```{r, warning=FALSE}
 fig_S_components_degC <- PlotSNRStackBoot_byVar(coral_specs_reg_mean_boot_degC,
                                                 ERSST_specs_reg_mean,
-                        #components = "S_noise",
-                       f_range = c(1/100, 1/2), 
-                       plot_SST = FALSE) +
+                                                f_range = c(1/100, 1/2),
+                                                plot_SST = FALSE) +
   coord_cartesian(ylim = c(0.01, 2))
 
 ```
 
 
-## Fig 2a-c
+### Fig 2a-c
 
 ```{r fig_Clim_Instr_degC_No_Comp, fig.height=8, warning=FALSE}
 patchwork::wrap_plots(
@@ -1307,7 +1325,7 @@ patchwork::wrap_plots(
 
 
 
-# Bootstrap variances -------
+# Bootstrap variances
 
 
 ```{r}
@@ -1660,7 +1678,8 @@ c_specs_var_comb %>%
   filter(complete.cases(var_SST),
          spec_id %in% c("S_proxy", "S_clim"), 
          SST_product == "SST_OISST2_dis") %>% 
-  ggplot(aes(x = sqrt(var_SST), y = sqrt(var_proxy), colour = paleoData_variableName)) +
+  ggplot(aes(x = sqrt(var_SST), y = sqrt(var_proxy),
+             colour = paleoData_variableName)) +
   geom_point() +
   # geom_abline(aes(slope = slope, intercept = 0),
   #             lty = 2) +
@@ -1669,7 +1688,8 @@ c_specs_var_comb %>%
   theme_bw() +
   #scale_x_sqrt() +
   #scale_y_sqrt() +
-  scale_colour_manual(values = pal_coral_proxies, guide = guide_legend(reverse = TRUE)) +
+  scale_colour_manual(values = pal_coral_proxies,
+                      guide = guide_legend(reverse = TRUE)) +
     labs(x = "SD SST [°C]", y = "SD Sr/Ca [mmol/mol]",
        colour = "") +
   theme_bw()+
@@ -1694,12 +1714,14 @@ c_specs_var_comb %>%
   filter(complete.cases(var_SST),
          spec_id %in% c("S_proxy", "S_clim"), 
          SST_product == "SST_ERSST5_dis") %>% 
-  ggplot(aes(x = sqrt(var_SST), y = sqrt(var_proxy), colour = paleoData_variableName)) +
+  ggplot(aes(x = sqrt(var_SST), y = sqrt(var_proxy), 
+             colour = paleoData_variableName)) +
   geom_point() +
   geom_abline(slope = 1, intercept = 0,
               lty = 2) +
   theme_bw() +
-  scale_colour_manual(values = pal_coral_proxies, guide = guide_legend(reverse = TRUE)) +
+  scale_colour_manual(values = pal_coral_proxies, 
+                      guide = guide_legend(reverse = TRUE)) +
     labs(x = "SD SST [°C]", y = "SD Sr/Ca [mmol/mol]",
        colour = "") +
   theme_bw()+
@@ -1743,7 +1765,7 @@ fig_SNR_dist_SrCa
 ```
 
 
-# Comparison of spectra from calibration residuals with spectra from stacking method ----
+# Comparison of spectra from calibration residuals with spectra from stacking method
 
 ```{r}
 coral_pairs_sub_lm <- coral_pairs_once %>%
@@ -1785,7 +1807,6 @@ regr_resids %>%
 
 
 ```{r}
-# spectra --------
 ## Bin timeseries to insert gaps
 bin.width <- 1
 coral_pairs_sub_lm_binned <- coral_pairs_sub_lm %>%
@@ -1867,7 +1888,6 @@ resid.specs_w_reg <- resid.specs_w %>%
            S_resids=S_resids$spec,
            S_fttd = S_fttd$spec)
   }) %>%
-  #select(-spec_id) %>%
   mutate(S_fttd_plus_resids = S_fttd + S_resids) %>%
   pivot_longer(cols = starts_with("S_"), values_to = "spec")
 
@@ -1926,7 +1946,7 @@ fig_SNR_vs_resids
 
 
 
-# Simulate autocorrelated errors -----
+# Simulate autocorrelated errors 
 
 
 ## Example record
@@ -1950,8 +1970,6 @@ pl_spec <- tibble(
   freq = seq(1/1000, 6, 1/1000),
   spec = exp(-2.65) * freq^-0.599) %>%  
   as_spec_df(.) 
-
-#gg_spec(list(pl_spec, SrCa_err_spec))
 
 # Splice the spectra together and interpolated to regular frequency axis
 spliced_spec <- bind_rows(
@@ -2004,7 +2022,8 @@ ex_dat_dec <- ex_dat %>%
   select(decade, SST_proxy) %>% 
   mutate(sigma_auto = sqrt(sigsq_spec_dec), 
          sigma_inde = sqrt(sigsq_spec_all_white)) %>% 
-  pivot_longer(starts_with("sigma_"), names_to = "noise_type", values_to = "sigma")
+  pivot_longer(starts_with("sigma_"),
+               names_to = "noise_type", values_to = "sigma")
 
 noise_type_labeller_2 <- ggplot2::as_labeller(
   c(
@@ -2032,7 +2051,8 @@ ex_dat_dec %>%
                       breaks = rev(c(
                         "sigma_auto",
                         "sigma_inde")),
-                      values = c(sigma_inde = "#5ab4ac", sigma_auto = "#d8b365"),
+                      values = c(sigma_inde = "#5ab4ac",
+                                 sigma_auto = "#d8b365"),
                       label =  rev(c(
                         sigma_auto = "Autocorrelated (this study)",
                         sigma_inde = "Independent")),
