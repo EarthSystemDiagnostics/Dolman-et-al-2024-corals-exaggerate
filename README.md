@@ -8,8 +8,8 @@ analyses in Dolman et al (2024)
 
 Code to run the analysis is in the Quarto document
 
-`docs/Dolman-et-al-2024-corals-exaggerate.qmd`
+`docs/Dolman-et-al-2024-corals-exaggerate-pairs.qmd`
 
 or alternatively the plain R script
 
-`Dolman-et-al-2024-corals-exaggerate.R`
+`Dolman-et-al-2024-corals-exaggerate-pairs.R`
