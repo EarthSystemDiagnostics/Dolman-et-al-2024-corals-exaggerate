@@ -1929,61 +1929,93 @@ fig_SNR_vs_resids
 # Simulate autocorrelated errors -----
 
 
-```{r}
-SrCa_err_spec <- coral_specs_reg_mean_boot_degC %>%
-  filter(paleoData_variableName == "SrCa",
-         spec_id == "S_noise", statistic == "spec_mean") %>%
-  mutate(dof = 2) %>% 
-  as_spec_df() %>%
-  DF2Spec()
-
-fig_S_noise <- gg_spec(SrCa_err_spec)
-```
-
-
 ## Example record
 
 ```{r}
-example_ts <- "PF19LAR01_SrCa" #"ZI16ROD01_SrCa"
+ex_dat <- readRDS("../data/FE18RUS01_SrCa.RDS")
 ```
 
+# Extrapolate S_noise to lower frequencies
+
 ```{r}
-ex_dat <- coral_pairs_once %>%
-  filter(paleoData_TSid == example_ts) %>%
-  mutate(resids = residuals(lm(ssa_values ~ SST_OISST2_dis, data = .,
-                               na.action = "na.exclude")))
+# Empirically estimated noise spectrum
+SrCa_err_spec <- coral_specs_reg_mean_boot_degC %>% 
+  filter(paleoData_variableName == "SrCa", 
+         spec_id == "S_noise", statistic == "spec_mean") %>% 
+  as_spec_df() %>% 
+  DF2Spec()
+
+# Power-law noise spectrum
+pl_spec <- tibble(
+  freq = seq(1/1000, 6, 1/1000),
+  spec = exp(-2.65) * freq^-0.599) %>%  
+  as_spec_df(.) 
+
+#gg_spec(list(pl_spec, SrCa_err_spec))
+
+# Splice the spectra together and interpolated to regular frequency axis
+spliced_spec <- bind_rows(
+  pl_spec %>% 
+    filter(freq < 1/100),
+  SrCa_err_spec %>% 
+    Spec2DF() %>% 
+    filter(freq >= 1/100)
+) %>% 
+  as_tibble() %>% 
+  select(freq, spec) %>% 
+  mutate(dof = 20) %>% 
+  as_spec_df() %>% 
+  do({
+    sp1 <- DF2Spec(.)
+    
+    sp2 <- PaleoSpec::SpecInterpolate(sp1, seq(1/1000, 6, 1/1000))
+    
+    Spec2DF(sp2)
+  }) %>% 
+  DF2Spec()
+
+gg_spec(spliced_spec)
 ```
 
 
-## Estimate uncertainty at annual resolution by integrating the S_noise spectrum to f = 1/2
+## Estimate uncertainty at decadal resolution by integrating the S_noise spectrum to f = 1/(2*10)
 
 ```{r}
-sigsq_spec <- GetVarFromSpectra(SrCa_err_spec, f = c(1/83, 1/2))$var
+delta_t_ex <- mean(diff(ex_dat$year.dec))
+tau_ex <- diff(range(ex_dat$year.dec))
 
-# variance of residuals from a calibration regression for white noise estimate
-siqsq_res <- (var(ex_dat$resids, na.rm = TRUE) / 1/0.06^2) / 12
 
-ex_dat_ann <- ex_dat %>% 
-  group_by(year) %>% 
+sigsq_spec_dec <- GetVarFromSpectra(spliced_spec,
+                                    f = c(1/tau_ex, 1/20))$var
+
+sigsq_spec_all_white <- GetVarFromSpectra(spliced_spec,
+                                          f = c(1/tau_ex, 1/(2*delta_t_ex)))$var / (10*1/delta_t_ex)
+```
+
+
+### Fig S3
+
+```{r}
+ex_dat_dec <- ex_dat %>% 
+  mutate(decade = round(year.dec, -1)) %>% 
+  group_by(decade) %>% 
   summarise_if(is.numeric, mean) %>% 
   mutate(SST_proxy = (paleoData_values - mean(paleoData_values)) / -1/0.06) %>% 
-  select(year, SST_proxy) %>% 
-  mutate(sigma_auto = sqrt(sigsq_spec), 
-         sigma_inde = sqrt(siqsq_res)) %>% 
-  pivot_longer(starts_with("sigma_"), names_to = "noise_type",
-               values_to = "sigma") 
+  select(decade, SST_proxy) %>% 
+  mutate(sigma_auto = sqrt(sigsq_spec_dec), 
+         sigma_inde = sqrt(sigsq_spec_all_white)) %>% 
+  pivot_longer(starts_with("sigma_"), names_to = "noise_type", values_to = "sigma")
 
 noise_type_labeller_2 <- ggplot2::as_labeller(
   c(
+    sigma_meas = "Measurement error only",
     sigma_auto = "Autocorrelated noise (this study)",
     sigma_inde = "Independent noise"))
-```
 
-## Fig S6
 
-```{r}
-ex_dat_ann %>% 
-  ggplot(aes(x = year, y = SST_proxy)) +
+ex_dat_dec %>% 
+  filter(noise_type != "sigma_meas") %>% 
+  ggplot(aes(x = decade, y = SST_proxy)) +
   geom_line(aes(colour = noise_type)) +
   geom_ribbon(aes(
     ymax = SST_proxy + sigma,
@@ -2007,6 +2039,8 @@ ex_dat_ann %>%
                       aesthetics = c("fill", "colour")) +
   theme_bw() +
   theme(panel.grid = element_blank(), legend.position = "none")+
-  labs(x = "Year", y = "Annual temperature anomaly [°C]")
+  labs(x = "Decade [CE]", y = "Decadal temperature anomaly [°C]")
 ```
+
+
 
