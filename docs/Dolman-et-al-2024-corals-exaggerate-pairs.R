@@ -1,11 +1,11 @@
-## ----setup, include=FALSE----------------------------------------------------------------------------------------------------
+## ----setup, include=FALSE-------------------------------------------------------------------------------
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       cache = TRUE,
                       fig.width = 8, fig.height = 5,
                       dev.args = list(png = list(type = "cairo")))
 
 
-## ----load_packages-----------------------------------------------------------------------------------------------------------
+## ----load_packages--------------------------------------------------------------------------------------
 library(dplyr)
 library(tidyr)
 library(ggplot2)
@@ -14,19 +14,26 @@ library(progress)
 library(ccaPP)
 
 
-## ----load_github_packages----------------------------------------------------------------------------------------------------
+## ----load_github_packages-------------------------------------------------------------------------------
 if(!require(PaleoSpec)){
     remotes::install_github("EarthSystemDiagnostics/paleospec")
     library(PaleoSpec)
 }
 
+if(!require(proxysnr)){
+    remotes::install_github("EarthSystemDiagnostics/proxysnr")
+    library(proxysnr)
+}
 
-## ----load_additional_functions-----------------------------------------------------------------------------------------------
+
+
+
+## ----load_additional_functions--------------------------------------------------------------------------
 source("colour-palettes.R")
 source("functions.R")
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 # equalise the variance of all records in a cluster
 eq_var <- FALSE
 
@@ -48,7 +55,7 @@ use_cache = TRUE
 n_boot <- 100
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 coral_pairs_sub0 <- readRDS("../data/coral_pairs_sub0_mon.rds")
 
 coral_pairs_sub0 <- coral_pairs_sub0 %>% 
@@ -60,7 +67,7 @@ coral_pairs_sub0 <- coral_pairs_sub0 %>%
   mutate(overlap_years = round(last_joint_year.dec - first_joint_year.dec, 2))
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 coral_pairs_sub <- coral_pairs_sub0 
 
 if (use_ssa == TRUE){
@@ -70,7 +77,7 @@ if (use_ssa == TRUE){
 }
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 coral_pairs_sub <- coral_pairs_sub %>%
   group_by(paleoData_TSid) %>%
   mutate(longest_instance = overlap_years == max(overlap_years))
@@ -102,7 +109,7 @@ stopifnot(
   )
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 OISST_ann <- readRDS("../data/OISST2_ch2k_remap_int.rds") %>% 
   group_by(paleoData_ch2kCoreCode, year) %>% 
   summarise(SST_OISST2_dis = mean(SST_OISST2_dis, na.rm = TRUE))
@@ -133,7 +140,7 @@ OISST_pair_rho %>%
          rho >= min_rho)
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 OISST_pair_rho %>% 
  filter(resolution == "mon") %>%
   ggplot(aes(x = dist_km, y = rho)) +
@@ -149,13 +156,13 @@ OISST_pair_rho %>%
   labs(x = "Pairwise distance [km]")
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 pairs_to_use <- OISST_pair_rho %>% 
   filter(resolution %in% c("mon"),
          rho >= min_rho)
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 f_breaks <- c(1/100, 1/10, 1/2, 1/1.1, 1.1/1)
 f_names <- as.character(expression(1/100, 1/10, 1/2, 1/1.1, 1.1/1))
 
@@ -178,7 +185,7 @@ fbands$f_band_name <- factor(c("Decadal to\nCentennial",
 
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 genus_count <- coral_pairs_sub %>% 
   filter(pair %in% pairs_to_use$pair) %>% 
   select(paleoData_variableName, paleoData_TSid,
@@ -191,7 +198,7 @@ genus_count <- coral_pairs_sub %>%
 knitr::kable(genus_count)
 
 
-## ----inset_figures_2---------------------------------------------------------------------------------------------------------
+## ----inset_figures_2------------------------------------------------------------------------------------
 sub_mon <- coral_pairs_sub %>% 
   filter(pair %in% pairs_to_use$pair) %>% 
   filter(paleoData_TSid == "FL17DTO01_SrCa") 
@@ -214,7 +221,7 @@ lm_OISST <- sub_mon %>%
 cfs_OISST <- coef(lm_OISST)
 
 
-## ----inset_figures_big-------------------------------------------------------------------------------------------------------
+## ----inset_figures_big----------------------------------------------------------------------------------
 ins_mon_long <- sub_mon %>% 
   filter(year > 1979, year < 2001,
          complete.cases(SST_OISST2_dis)) %>% 
@@ -251,7 +258,7 @@ ins_ann_long <- sub_ann %>%
 patchwork::wrap_plots(ins_mon_long, ins_ann_long, ncol = 1)
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 coral_pairs_once_SST_long <- coral_pairs_once %>% 
   filter(pair %in% pairs_to_use$pair) %>% 
   filter(resolution == "mon") %>% 
@@ -320,7 +327,7 @@ dec_SD <- coral_pairs_sub_ann %>%
   
 
 
-## ----fig.width=5, fig.height = 3.5-------------------------------------------------------------------------------------------
+## ----fig.width=5, fig.height = 3.5----------------------------------------------------------------------
 #"FL17DTO01_SrCa"
 highlt_month <- month_SD %>% 
   filter(paleoData_ch2kCoreCode == "FL17DTO01",
@@ -360,7 +367,7 @@ fig_sd_mon <- month_SD %>%
 #fig_sd_mon
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 highlt_ann <- ann_SD %>% 
   filter(paleoData_ch2kCoreCode == "FL17DTO01",
          paleoData_variableName == "SrCa")%>% 
@@ -398,7 +405,7 @@ fig_sd_ann <- ann_SD %>%
 #fig_sd_ann
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 fig_sd_dec <- dec_SD %>%
   filter(SST_product %in% SST_prod_to_use) %>% 
   filter(paleoData_TSid %in% c("AL16YUC01_SrCa", "AL16PUR02_SrCa") == FALSE) %>% 
@@ -434,7 +441,7 @@ fig_sd_dec <- dec_SD %>%
 fig_sd_dec
 
 
-## ----fig_show_issue, fig.width=8---------------------------------------------------------------------------------------------
+## ----fig_show_issue, fig.width=8------------------------------------------------------------------------
 l <- fig_sd_mon+
   labs(tag = "b")  + 
   patchwork::inset_element(
@@ -474,7 +481,7 @@ fig_var_ill <- patchwork::wrap_plots(l, r)
 fig_var_ill
 
 
-## ----fig.width=5, fig.height = 3.5-------------------------------------------------------------------------------------------
+## ----fig.width=5, fig.height = 3.5----------------------------------------------------------------------
 fig_sd_mon_Genus <- month_SD %>% 
   filter(SST_product %in% SST_prod_to_use,
          complete.cases(sd_SST_mean)) %>% 
@@ -497,7 +504,7 @@ fig_sd_mon_Genus <- month_SD %>%
   scale_color_brewer("", type = "qual", palette = "Set2") 
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 fig_sd_ann_Genus <- ann_SD %>% 
   filter(SST_product %in% SST_prod_to_use) %>% 
   filter(paleoData_variableName == "SrCa") %>% 
@@ -522,7 +529,7 @@ fig_sd_ann_Genus <- ann_SD %>%
 
 
 
-## ----fig.width=5, fig.height = 3.5-------------------------------------------------------------------------------------------
+## ----fig.width=5, fig.height = 3.5----------------------------------------------------------------------
 fig_sd_mon_d18O_Genus <- month_SD %>% 
   filter(SST_product %in% SST_prod_to_use, 
          complete.cases(sd_SST_mean)) %>% 
@@ -545,7 +552,7 @@ fig_sd_mon_d18O_Genus <- month_SD %>%
   scale_color_brewer("", type = "qual", palette = "Set2")
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 fig_sd_ann_d18O_Genus <- ann_SD %>% 
   filter(SST_product %in% SST_prod_to_use) %>% 
   filter(paleoData_variableName == "d18O") %>% 
@@ -568,7 +575,7 @@ fig_sd_ann_d18O_Genus <- ann_SD %>%
   scale_color_brewer("", type = "qual", palette = "Set2")
 
 
-## ----fig_show_issue_Genus, fig.width=9, fig.height=8, warning=FALSE----------------------------------------------------------
+## ----fig_show_issue_Genus, fig.width=9, fig.height=8, warning=FALSE-------------------------------------
 patchwork::wrap_plots(fig_sd_mon_Genus, fig_sd_ann_Genus, 
                       fig_sd_mon_d18O_Genus, fig_sd_ann_d18O_Genus, 
                       guides = "auto") +
@@ -577,7 +584,7 @@ patchwork::wrap_plots(fig_sd_mon_Genus, fig_sd_ann_Genus,
 
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 #bin_width <- 1
 coral_pairs_binned <- coral_pairs_sub %>% 
   mutate(month_CE = year * 12 + month,
@@ -602,7 +609,7 @@ coral_pairs_binned <- coral_pairs_sub %>%
   mutate(p_NA = sum(is.na(mean.value)) / n())
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 # check for number of gaps
 coral_pairs_binned %>% 
   select(paleoData_TSid, resolution, p_NA) %>% 
@@ -612,7 +619,7 @@ coral_pairs_binned %>%
   facet_wrap(~resolution, scales = "free")
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 # Make each pair a matrix of time x record
 coral_pairs_binned_wide <- coral_pairs_binned %>%
   filter(p_NA < 0.1) %>% 
@@ -641,7 +648,7 @@ coral_pairs_binned_wide <- coral_pairs_binned %>%
 stopifnot(all(sapply(coral_pairs_binned_wide$m, ncol) == 2))
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 ## Get spec of climate at locations
 ERSST_pairs_binned <- coral_pairs_sub %>%
   mutate(month_CE = year * 12 + month,
@@ -703,7 +710,7 @@ ERSST_pairs_binned_wide <- ERSST_pairs_binned %>%
 
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 ERSST_specs <- ERSST_pairs_binned_wide %>%
   filter(p_gaps < 0.2#,
          #paleoData_TSid != "RE19GBR04_SrCa"
@@ -719,7 +726,7 @@ ERSST_specs <- ERSST_pairs_binned_wide %>%
   as_spec_df()
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 ERSST_specs_reg <- ERSST_specs %>%
   group_by(spec_id, bin.width, pair, dist_km, paleoData_variableName,
            resolution, SST_product) %>%
@@ -764,7 +771,7 @@ ERSST_specs_reg_mean <- ERSST_specs_reg %>%
   as_spec_df()
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 coral_specs <- coral_pairs_binned_wide %>% 
   filter(p_gaps < 0.2) %>% 
   #filter(resolution == "mon") %>% 
@@ -782,7 +789,7 @@ coral_specs <- coral_pairs_binned_wide %>%
   left_join(., coral_pairs_meta)
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 # interpolated each to same freq axis
 coral_specs_reg <- coral_specs %>% 
  group_by(spec_id, resolution, bin.width, pair, dist_km, 
@@ -815,7 +822,7 @@ coral_specs_reg <- coral_specs %>%
   })
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 coral_specs_reg_mean <- coral_specs_reg %>%
   filter(pair %in% pairs_to_use$pair) %>% 
   group_by(spec_id, paleoData_variableName, freq) %>%
@@ -837,7 +844,7 @@ coral_specs_reg_mean <- coral_specs_reg %>%
   as_spec_df()
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 coral_specs_reg_mean_degC <- coral_specs_reg_mean %>% 
   as_tibble() %>% 
   #select(spec_id, paleoData_variableName, freq, spec) %>% 
@@ -851,7 +858,7 @@ coral_specs_reg_mean_degC <- coral_specs_reg_mean %>%
   as_spec_df() 
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 coral_specs_distsub <- coral_specs_reg %>% 
   filter(pair %in% pairs_to_use$pair) %>% 
   ungroup() %>% 
@@ -862,7 +869,7 @@ coral_specs_distsub <- coral_specs_reg %>%
                values_to = "paleoData_TSid")
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 BootAndSummarise <- function(dat) {
   
   boot_sample_data <- dat %>%
@@ -890,7 +897,7 @@ BootAndSummarise <- function(dat) {
 }
 
 
-## ----load_boot, cache.lazy = FALSE-------------------------------------------------------------------------------------------
+## ----load_boot, cache.lazy = FALSE----------------------------------------------------------------------
 if (file.exists("..data/coral_specs_reg_mean_boot.RData") == FALSE | file.exists("..data/coral_specs_reg_mean_boot_degC.RData") == FALSE |
     use_cache == FALSE) {
   if (file.exists("../data/coral_pair_specs_boot.RData") == FALSE | 
@@ -958,7 +965,7 @@ saveRDS(coral_specs_reg_mean_boot_degC,
 }
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 pairs_per_freq <- coral_specs_reg %>%
   filter(pair %in% pairs_to_use$pair) %>%
   filter(complete.cases(spec)) %>% 
@@ -970,7 +977,7 @@ pairs_per_freq <- coral_specs_reg %>%
   as_spec_df()
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 fig_no_pairs <- pairs_per_freq %>% 
   filter(spec_id == "S_clim") %>% 
   ggplot(aes(x = freq)) +
@@ -993,7 +1000,7 @@ fig_no_pairs <- pairs_per_freq %>%
 fig_no_pairs
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 PlotSNRStackBoot <- function(coral_dat, SST_dat, 
                              components = c("S_clim", "S_proxy", "S_noise"),
                              f_range = NULL,
@@ -1059,7 +1066,7 @@ PlotSNRStackBoot <- function(coral_dat, SST_dat,
 }
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 PlotSNRStackBoot_byVar <- function(
     coral_dat, SST_dat, 
     components = c("S_clim", "S_proxy", "S_noise"),
@@ -1139,7 +1146,7 @@ PlotSNRStackBoot_byVar <- function(
 }
 
 
-## ----warning=FALSE-----------------------------------------------------------------------------------------------------------
+## ----warning=FALSE--------------------------------------------------------------------------------------
 fig_SNR_full_Freq <- PlotSNRStackBoot(
   coral_specs_reg_mean_boot_degC,
   ERSST_specs_reg_mean
@@ -1147,7 +1154,7 @@ fig_SNR_full_Freq <- PlotSNRStackBoot(
 fig_SNR_full_Freq
 
 
-## ----warning=FALSE-----------------------------------------------------------------------------------------------------------
+## ----warning=FALSE--------------------------------------------------------------------------------------
 fig_S_Clim_Instr_degC <- PlotSNRStackBoot(coral_specs_reg_mean_boot_degC,
                                           ERSST_specs_reg_mean,
                                           statistic = "spec_mean",
@@ -1156,7 +1163,7 @@ fig_S_Clim_Instr_degC <- PlotSNRStackBoot(coral_specs_reg_mean_boot_degC,
                                           )
 
 
-## ----warning=FALSE-----------------------------------------------------------------------------------------------------------
+## ----warning=FALSE--------------------------------------------------------------------------------------
 fig_S_components_degC <- PlotSNRStackBoot_byVar(coral_specs_reg_mean_boot_degC,
                                                 ERSST_specs_reg_mean,
                                                 f_range = c(1/100, 1/2),
@@ -1165,7 +1172,7 @@ fig_S_components_degC <- PlotSNRStackBoot_byVar(coral_specs_reg_mean_boot_degC,
 
 
 
-## ----fig_Clim_Instr_degC_No_Comp, fig.height=8, warning=FALSE----------------------------------------------------------------
+## ----fig_Clim_Instr_degC_No_Comp, fig.height=8, warning=FALSE-------------------------------------------
 patchwork::wrap_plots(
   fig_S_Clim_Instr_degC + 
     coord_cartesian(xlim = c(0.01, 1/2), ylim = c(1e-02, 3e00))+ 
@@ -1186,7 +1193,7 @@ patchwork::wrap_plots(
   labs(tag = "c")
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 GetPairVarFband <- function(pair_specs){
   pair_specs %>% 
   filter(spec_id != "SignalNoise") %>% 
@@ -1223,7 +1230,7 @@ SummariseVarFband <- function(var_fband){
 }
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 coral_specs_var_fband <- coral_specs %>%
   filter(resolution == "mon") %>% 
   GetPairVarFband(.)
@@ -1234,7 +1241,7 @@ coral_specs_var_fband_mean <- coral_specs_var_fband %>%
   SummariseVarFband(.) 
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 BootAndSummariseVarFband <- function(dat) {
  
   boot_sample_data <- dat %>%
@@ -1254,7 +1261,7 @@ BootAndSummariseVarFband <- function(dat) {
 }
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 coral_specs_varsub <- coral_specs_var_fband %>% 
    filter(pair %in% pairs_to_use$pair) %>% 
   ungroup() %>% 
@@ -1264,7 +1271,7 @@ coral_specs_varsub <- coral_specs_var_fband %>%
                values_to = "paleoData_TSid")
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 if (file.exists("../data/coral_pair_var_boot.RData") == FALSE |
     use_cache == FALSE) {
   n_reps <- n_boot
@@ -1300,13 +1307,13 @@ if (file.exists("../data/coral_pair_var_boot.RData") == FALSE |
 
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 boot_var_fband_summary <- boot_var_fband %>% 
   group_by(f_band, f_band_name, paleoData_variableName) %>% 
   summarise_q_2(., var = 1/var_ratio_mu)
 
 
-## ----fig_inflation_factor, fig.width = 5-------------------------------------------------------------------------------------
+## ----fig_inflation_factor, fig.width = 5----------------------------------------------------------------
 boot_var_fband_summary %>% 
   ggplot(aes(x = f_band_name, y = `50%`, colour = paleoData_variableName)) +
   geom_linerange(aes(ymax = `97.5%`, ymin = `2.5%`),
@@ -1331,11 +1338,11 @@ boot_var_fband_summary %>%
 
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 boot_var_fband_summary 
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 coral_pairs_binned_SST <- coral_pairs_sub %>% 
   filter(pair %in% pairs_to_use$pair) %>% 
    mutate(month_CE = year * 12 + month,
@@ -1391,7 +1398,7 @@ coral_pairs_binned_wide_SST %>%
   summarise(n_pairs = n_distinct(pair))
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 SST_specs <- coral_pairs_binned_wide_SST %>% 
   #filter(p_gaps < 0.2) %>% 
   group_by(bin.width, pair, resolution, dist_km, pair_size, 
@@ -1406,7 +1413,7 @@ SST_specs <- coral_pairs_binned_wide_SST %>%
   as_spec_df()
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 SST_specs_reg <- SST_specs %>% 
   group_by(spec_id, bin.width, pair, resolution, dist_km, 
            paleoData_variableName, SST_product) %>% 
@@ -1442,7 +1449,7 @@ SST_specs_reg_mean <- SST_specs_reg %>%
   as_spec_df()
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 c_specs_var <- coral_specs %>% 
   filter(spec > 0, freq >= 0.01) %>% 
   filter(pair %in% pairs_to_use$pair) %>% 
@@ -1501,7 +1508,7 @@ comp_names <- tibble(
 )
 
 
-## ----fig.width=7, fig.height=5-----------------------------------------------------------------------------------------------
+## ----fig.width=7, fig.height=5--------------------------------------------------------------------------
 c_specs_var_comb %>% 
   left_join(., comp_names) %>% 
   mutate(slope = ifelse(paleoData_variableName == "d18O", 0.22, 0.06)) %>% 
@@ -1534,7 +1541,7 @@ c_specs_var_comb %>%
   facet_grid(name ~ paleoData_variableName, labeller = Spec_SrCa_d18O_labeller)
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 c_specs_var_comb %>% 
   left_join(., comp_names) %>% 
   mutate(slope = ifelse(paleoData_variableName == "d18O", 0.22, 0.06)) %>% 
@@ -1561,31 +1568,7 @@ c_specs_var_comb %>%
   facet_grid(name ~ paleoData_variableName, labeller = Spec_SrCa_d18O_labeller)
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
-fig_SNR_dist_SrCa <-  coral_specs_var_fband %>% 
-  filter(SNR > 0) %>% 
-  filter(paleoData_variableName == "SrCa") %>% 
-  filter(f_band_name != "Decadal to\nCentennial") %>% 
-  ggplot(aes(x = dist_km+0.1, y = (SNR),
-             colour = f_band_name, fill = f_band_name)
-         ) +
-  geom_point() +
-  geom_vline(xintercept = max_dist, linetype = 2) +
-  scale_y_log10(labels = scales::comma) +
-  scale_x_log10(breaks = c(0, 1, 10, 100, 1000)) +
-  geom_smooth(method = "lm") +
-  annotation_logticks(sides = "lb") +
-  labs(y = "Signal to Noise ratio", 
-       fill = "", colour = "",
-       x = "Mean pairwise distance [km+0.1]") +
-  scale_color_viridis_d(aesthetics = c("fill", "colour"), end = 0.9) +
-  theme_bw()+
-  theme(panel.grid.minor = element_blank()) 
-
-fig_SNR_dist_SrCa
-
-
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 coral_pairs_sub_lm <- coral_pairs_once %>%
   filter(pair %in% pairs_to_use$pair) %>% 
   select(year, month, starts_with("paleoData_"),
@@ -1605,7 +1588,7 @@ coral_pairs_sub_lm <- coral_pairs_once %>%
   })
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 regr_resids <- coral_pairs_sub_lm %>% 
   summarise_if(is.numeric, sd, na.rm = TRUE) %>% 
   mutate(resid_proxy_lm = ifelse(paleoData_variableName == "SrCa",
@@ -1613,13 +1596,13 @@ regr_resids <- coral_pairs_sub_lm %>%
                                  resid_proxy_lm * 1/0.22))
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 regr_resids %>% 
   group_by(paleoData_variableName) %>% 
   hamstr:::summarise_q(., resid_proxy_lm)
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 ## Bin timeseries to insert gaps
 bin.width <- 1
 coral_pairs_sub_lm_binned <- coral_pairs_sub_lm %>%
@@ -1643,7 +1626,7 @@ coral_pairs_sub_lm_binned <- coral_pairs_sub_lm %>%
   )
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 resid.specs <- coral_pairs_sub_lm_binned %>%
   group_by(paleoData_variableName, paleoData_TSid,
            paleoData_ch2kCoreCode, SST_product, type) %>%
@@ -1659,7 +1642,7 @@ resid.specs <- coral_pairs_sub_lm_binned %>%
   select(-type)
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 resid.specs_w <- resid.specs %>%
   group_by(paleoData_TSid, SST_product) %>%
   filter(rank(freq) > 2) %>%
@@ -1670,7 +1653,7 @@ resid.specs_w <- resid.specs %>%
   mutate(spec_id = paleoData_variableName)
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 resid.specs_w_reg <- resid.specs_w %>%
   mutate(dof = 1000) %>%
   group_by(paleoData_variableName, paleoData_TSid,
@@ -1722,13 +1705,13 @@ resid.specs_w_summary <- resid.specs_w_reg  %>%
          `2.5%` = ifelse(statistic == "spec_mean", spec - 2*se, spec - 2*mad_e))
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 resids_spec <- resid.specs_w_summary %>%
   filter(spec_id == "S_resids", statistic == "spec_mean", freq > 1/100) %>% 
   mutate(spec_id = SST_product)
 
 
-## ----fig_S_noise_resids, fig.width=8-----------------------------------------------------------------------------------------
+## ----fig_S_noise_resids, fig.width=8--------------------------------------------------------------------
 regr_labs <- list(S_noise = expression("Proxy noise (" * S[noise] * ")"),
      SST_ERSST5_dis = expression("ERSSTv5 residuals"),
      SST_OISST2_dis = expression("OISSTv2 residuals"))
@@ -1752,11 +1735,320 @@ fig_SNR_vs_resids <- coral_specs_reg_mean_boot_degC %>%
 fig_SNR_vs_resids
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
+fig_SNR_vs_resids_low <- coral_specs_reg_mean_boot_degC %>%
+  filter(spec_id == "S_noise", statistic == "spec_mean") %>%
+  bind_rows(., resids_spec) %>%
+  filter(freq <= 1/2) %>% 
+  as_spec_df() %>%
+  gg_spec(., quantiles = TRUE, time_unit = "years") +
+  facet_wrap(~paleoData_variableName,
+              labeller = Spec_SrCa_d18O_labeller, scales = "free_y") +
+  scale_colour_manual(values = c("S_noise" = "#d95f02",
+                                 "SST_ERSST5_dis" = "#b2df8a",
+                                 "SST_OISST2_dis" = "#1f78b4"),
+                      breaks = names(regr_labs),
+                      labels = regr_labs,
+                      aesthetics = c("colour", "fill"))+
+  labs(colour = "", fill = "", y = expression(PSD~"[K"^{2}*"yr]"))
+
+fig_SNR_vs_resids_low
+
+
+## -------------------------------------------------------------------------------------------------------
+coral_specs_n_pair <- coral_specs %>% 
+  filter(spec_id %in% c("S_proxy")) %>% 
+  mutate(spec = spec / 2,
+         spec_id = "S_proxy_n") %>% 
+  bind_rows(., 
+            coral_specs %>% 
+              filter(spec_id %in% c("S_stack", "S_proxy"))
+            ) %>% 
+  mutate(spec = ifelse(spec_id != "SignalNoise", ifelse(paleoData_variableName == "d18O", 
+                        spec * 1/0.22^2,
+                        spec * 1/0.06^2), spec)
+         )%>%
+  bind_rows(., 
+            ERSST_specs %>% 
+              mutate(spec_id = SST_product)
+            ) %>% 
+  filter(dist_km < 100)
+
+
+## -------------------------------------------------------------------------------------------------------
+coral_specs_n_pair_fband <- coral_specs_n_pair %>% 
+  mutate(f_band_name = cut(freq, 
+                      breaks = c(1/30, 1/10, 1/2, 2, 12),
+                      labels = c("Inter-decadal", "Decadal to inter-annual", "Annual", "Biannual to monthly")),
+         f_band = cut(freq, 
+                      breaks = c(1/30, 1/10, 1/2, 2, 12))
+         ) %>% 
+  group_by(f_band, f_band_name, spec_id, pair, paleoData_variableName) %>% 
+  summarise_if(is.numeric, mean)
+
+
+## -------------------------------------------------------------------------------------------------------
+logger_ratio_site_run_spec <- readRDS("../data/logger_OISST_ratio_site_run_spec.RDS") 
+
+
+## -------------------------------------------------------------------------------------------------------
+logger_ratio_site_run_bw <- logger_ratio_site_run_spec %>% 
+  mutate(spec_id = "Individual sites") %>% 
+  #left_join(., depth_key) %>% 
+    mutate(f_band_name = cut(freq, 
+                      breaks = c(1/30, 1/10, 1/2, 2, 12, 182),
+                      labels = c("Inter-decadal", "Decadal to inter-annual",
+                                 "Annual", "Biannual to monthly", "Monthly to inter-daily")),
+         f_band = cut(freq, 
+                      breaks = c(1/30, 1/10, 1/2, 2, 12, 182))
+         ) %>% 
+   group_by(f_band, f_band_name, site_run) %>% 
+  summarise_if(is.numeric, mean) %>% 
+  filter(f_band_name != "Monthly to inter-daily")
+
+
+## -------------------------------------------------------------------------------------------------------
+set.seed(20250404)
+coral_specs_n_pair_fband %>% 
+  filter(complete.cases(f_band)) %>% 
+  select(spec_id, pair, paleoData_variableName, dist_km, f_band, f_band_name, spec) %>% 
+  pivot_wider(names_from = spec_id, values_from = spec) %>% 
+  ggplot(aes(x = f_band, y = S_proxy / OISSTv2, colour = paleoData_variableName)) +
+  
+  ## add logger ratios
+  geom_boxplot(data = logger_ratio_site_run_bw, aes(y = spec, colour = "logger")) +
+  geom_point(data = logger_ratio_site_run_bw, aes(y = spec, colour = "logger"),
+             alpha = 0.5,
+             position = position_jitter(width = 1/8)) +
+  geom_boxplot() +
+  
+  geom_point(position = position_jitterdodge(jitter.width = 1/8), alpha = 0.75) +
+  expand_limits(y = 0) +
+  scale_x_discrete(labels = ) +
+  scale_y_log10(breaks = c(0.3, 1, 3, 10, 30, 1.2)) +
+  annotation_logticks(sides = "l") +
+  geom_hline(yintercept = c(1), lty = 2) +
+  scale_colour_manual(values = c(pal_coral_proxies, logger = "black"),
+                      aesthetics = c("colour", "fill")) +
+  theme_bw() +
+  theme(panel.grid = element_blank()) +
+  facet_grid(.~f_band_name, scales = "free_x") +
+  labs(x = "Frequency band [1/years]",
+       y = "Variance ratio [Coral or logger / OISST]", colour = "") 
+
+
+## -------------------------------------------------------------------------------------------------------
+coral_pairs_years_meta <- coral_pairs_sub %>% 
+  filter(dist_km <= 100) %>% 
+  select(pair, dist_km, paleoData_TSid, paleoData_variableName, resolution,
+         interpolated, first_joint_year.dec,  last_joint_year.dec, maxYear, minYear) %>% 
+  distinct() %>% 
+  #right_join(meta_1, .) %>%  
+  group_by(paleoData_variableName, dist_km, resolution, pair, paleoData_TSid) %>% 
+  reframe(top_year = ceiling(maxYear), 
+          bottom_year = floor(minYear),
+          last_joint_year = round(last_joint_year.dec, 1),
+          first_joint_year = round(first_joint_year.dec, 1),
+          prior_years = round((top_year - last_joint_year.dec)),
+          joint_years = round(last_joint_year.dec - first_joint_year.dec)) %>% 
+  group_by(pair) %>% 
+  mutate(diff_prior_years = abs(diff(prior_years)),
+         mean_prior_years = round(mean(prior_years))) %>% 
+  mutate(n_sim = mean_prior_years + joint_years) %>% 
+  arrange(desc(diff_prior_years))
+  
+
+coral_pairs_years_meta_pair <- coral_pairs_years_meta %>% 
+  select(pair, diff_prior_years) %>% 
+  distinct()
+
+
+## -------------------------------------------------------------------------------------------------------
+if (file.exists("~/Dropbox/Work/AWI/working-data-files/corals-exaggerate/coral_pairs_time_TF.RData")){
+  
+  coral_pairs_time_TF <- readRDS("~/Dropbox/Work/AWI/working-data-files/corals-exaggerate/coral_pairs_time_TF.RData")
+  
+} else {
+ coral_pairs_time_TF <- coral_pairs_years_meta %>% 
+  select(pair, dist_km, paleoData_variableName, resolution, mean_prior_years, joint_years) %>% 
+  distinct() %>% 
+  group_by(pair, dist_km, resolution, paleoData_variableName) %>% 
+  crossing(., rep = 1:1, error_rate = 1/c(50, 100, 200, 400, 800),
+           n_cores = c(2)) %>% 
+  group_by(rep, error_rate, n_cores, pair, dist_km, resolution, paleoData_variableName) %>% 
+  do({
+    
+    # pad to be even so that f_max is 1/2 for all pairs
+    n <- .$mean_prior_years + .$joint_years
+    
+    if ((n %% 2) == 1) {
+      n <- n+1
+    }
+    
+    tax <- n:1
+    alpha = 0.1
+    beta = 0.8
+
+    sp1 <- suppressMessages(
+      proxysnr::CalculateTimeUncertaintyTF(
+    t = tax,
+    acp = c(tax[1]),
+    nc = .$n_cores,
+    ns = 1000,
+    model = "bernoulli",
+    rate = c(.$error_rate, .$error_rate)/2,
+    df.log = NULL,
+    pad = TRUE,
+    surrogate.fun = PaleoSpec::SimPLS,
+    fun.par = list(beta = beta, alpha = alpha)
+    ))
+    
+    sp1$dof <- 2
+    
+    Spec2DF(sp1)
+    
+  }) %>% 
+  mutate(spec_id = pair) %>% 
+  as_spec_df()
+
+  saveRDS(coral_pairs_time_TF,
+        "~/Dropbox/Work/AWI/working-data-files/corals-exaggerate/coral_pairs_time_TF.RData")
+ 
+}
+ 
+
+
+## -------------------------------------------------------------------------------------------------------
+coral_pairs_time_TF %>% 
+  #filter(min(spec) > (1.1/n_cores)) %>% 
+  as_spec_df() %>% 
+  gg_spec(., colour = paleoData_variableName,
+        group = paste(rep, pair, error_rate),
+        alpha.line = 0.5) +
+  facet_wrap(~paleoData_variableName) +
+  scale_y_continuous() +
+  expand_limits(y  = 0) +
+  geom_hline(aes(yintercept = 1/n_cores), lty = 2) +
+  facet_grid(n_cores+resolution~error_rate, scales = "free")
+
+
+## -------------------------------------------------------------------------------------------------------
+coral_pairs_time_TF_reg <- coral_pairs_time_TF %>% 
+  group_by(rep, error_rate, n_cores, resolution, pair, paleoData_variableName) %>% 
+  do({
+ 
+    dat <- .
+    sp1 <- DF2Spec(dat)
+    fax <- seq(1/100, 1/2, 1/100)
+    sp2 <- SpecInterpolate(sp1, freqRef = fax)
+    Spec2DF(sp2)
+  
+  }) %>% 
+  mutate(error_rate_e_yr = factor(paste0("1 in ", 1/error_rate, " years"))) %>% 
+  as_spec_df()
+
+
+## -------------------------------------------------------------------------------------------------------
+coral_pairs_time_TF_rep_summary <- coral_pairs_time_TF_reg %>% 
+  filter(n_cores == 2) %>% 
+  group_by(rep, error_rate, error_rate_e_yr, resolution, paleoData_variableName, freq) %>% 
+  summarise(spec = mean(spec, na.rm = TRUE))
+
+
+coral_pairs_time_TF_summary <- coral_pairs_time_TF_rep_summary %>% 
+  group_by(error_rate, error_rate_e_yr, paleoData_variableName, resolution, freq) %>% 
+  summarise_q_2(., spec) %>% 
+  mutate(spec = mean,
+         error_rate  = as.character(error_rate),
+         spec_id = paste(error_rate, paleoData_variableName)) %>% 
+  as_spec_df()
+
+
+coral_pairs_time_TF_summary  %>% 
+  gg_spec(., quantiles = TRUE, force.lims = TRUE, colour = error_rate_e_yr) +
+  geom_hline(yintercept = 1/2, lty = 2) +
+  facet_wrap(~resolution+paleoData_variableName)
+
+
+
+## -------------------------------------------------------------------------------------------------------
+TF_I_coral <- coral_pairs_time_TF_summary %>% 
+  as_tibble() %>% 
+  select(paleoData_variableName, error_rate, error_rate_e_yr, freq, spec) %>% 
+  rename(TF_time = spec)
+
+coral_specs_reg_mean_boot_degC_Time <- coral_specs_reg_mean_boot_degC %>% 
+  filter(spec_id %in% c("S_proxy", "S_stack", "S_clim", "S_noise"), 
+         statistic == "spec_mean") %>% 
+  as_tibble() %>% 
+  select(spec_id, paleoData_variableName, freq, mean, ends_with("%")) %>% 
+  pivot_longer(cols = c(mean, ends_with("%"))) %>% 
+  pivot_wider(names_from = spec_id, values_from = value) %>% 
+  left_join(., TF_I_coral) %>% 
+  mutate(S_clim_time = (2 / (2-(TF_time^-1))) * (TF_time^-1) * (S_stack - (2^-1) * S_proxy),
+         S_stack_time = S_proxy * TF_time,
+         S_noise_time = (S_proxy - S_stack_time) * 2 / (2-1) ) %>% 
+  pivot_longer(cols = starts_with("S_"), names_to = "spec_id") %>% 
+  pivot_wider(names_from = name, values_from = value) %>% 
+  mutate(spec = mean) %>% 
+  as_spec_df()
+
+
+## -------------------------------------------------------------------------------------------------------
+PlotSNRStackBoot(
+  mutate(coral_specs_reg_mean_boot_degC), 
+  filter(ERSST_specs_reg_mean, SST_product == "OISSTv2"),
+  #proxies = "SrCa",
+  statistic = "spec_mean",
+  components = c("S_proxy", "S_noise"),
+  plot_SST = FALSE,
+  f_range = c(0.01, 1/2)
+) +
+  geom_line(data = filter(coral_specs_reg_mean_boot_degC_Time, 
+                          error_rate %in% (1/c(50, 100, 200, 400)),
+                          spec_id %in% c("S_noise_time"), 
+                          freq <= 1/2), 
+            aes(x = freq, y = spec, linetype = error_rate_e_yr,
+                group = paste(spec_id, error_rate, paleoData_variableName))) +
+  scale_linetype_manual("Noise implied by\ncounting error rates",
+                          breaks = rev(unique(coral_specs_reg_mean_boot_degC_Time$error_rate_e_yr))[-1],
+                          values = 2:5)+  
+  guides(colour = guide_legend(order = 1),
+         fill = guide_legend(order = 1),
+         linetype = guide_legend(order = 3))
+
+
+
+
+## -------------------------------------------------------------------------------------------------------
+fig_SNR_dist_SrCa <-  coral_specs_var_fband %>% 
+  filter(SNR > 0) %>% 
+  filter(paleoData_variableName == "SrCa") %>% 
+  filter(f_band_name != "Decadal to\nCentennial") %>% 
+  ggplot(aes(x = dist_km+0.1, y = (SNR),
+             colour = f_band_name, fill = f_band_name)
+         ) +
+  geom_point() +
+  geom_vline(xintercept = max_dist, linetype = 2) +
+  scale_y_log10(labels = scales::comma) +
+  scale_x_log10(breaks = c(0, 1, 10, 100, 1000)) +
+  geom_smooth(method = "lm") +
+  annotation_logticks(sides = "lb") +
+  labs(y = "Signal to Noise ratio", 
+       fill = "", colour = "",
+       x = "Mean pairwise distance [km+0.1]") +
+  scale_color_viridis_d(aesthetics = c("fill", "colour"), end = 0.9) +
+  theme_bw()+
+  theme(panel.grid.minor = element_blank()) 
+
+fig_SNR_dist_SrCa
+
+
+## -------------------------------------------------------------------------------------------------------
 ex_dat <- readRDS("../data/FE18RUS01_SrCa.RDS")
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 # Empirically estimated noise spectrum
 SrCa_err_spec <- coral_specs_reg_mean_boot_degC %>% 
   filter(paleoData_variableName == "SrCa", 
@@ -1794,7 +2086,7 @@ spliced_spec <- bind_rows(
 gg_spec(spliced_spec)
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 delta_t_ex <- mean(diff(ex_dat$year.dec))
 tau_ex <- diff(range(ex_dat$year.dec))
 
@@ -1806,7 +2098,7 @@ sigsq_spec_all_white <- GetVarFromSpectra(spliced_spec,
                                           f = c(1/tau_ex, 1/(2*delta_t_ex)))$var / (10*1/delta_t_ex)
 
 
-## ----------------------------------------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------
 ex_dat_dec <- ex_dat %>% 
   mutate(decade = round(year.dec, -1)) %>% 
   group_by(decade) %>% 
