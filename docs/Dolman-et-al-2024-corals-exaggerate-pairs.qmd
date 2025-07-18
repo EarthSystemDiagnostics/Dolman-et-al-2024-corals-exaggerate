@@ -2045,6 +2045,7 @@ coral_specs_n_pair_fband %>%
 
 ```{r}
 coral_pairs_years_meta <- coral_pairs_sub %>% 
+  filter(pair %in% pairs_to_use$pair) %>% 
   filter(dist_km <= 100) %>% 
   select(pair, dist_km, paleoData_TSid, paleoData_variableName, resolution,
          interpolated, first_joint_year.dec,  last_joint_year.dec, maxYear, minYear) %>% 
@@ -2060,7 +2061,7 @@ coral_pairs_years_meta <- coral_pairs_sub %>%
   group_by(pair) %>% 
   mutate(diff_prior_years = abs(diff(prior_years)),
          mean_prior_years = round(mean(prior_years))) %>% 
-  mutate(n_sim = mean_prior_years + joint_years) %>% 
+  mutate(years_simulated = mean_prior_years + joint_years) %>% 
   arrange(desc(diff_prior_years))
   
 
@@ -2381,5 +2382,200 @@ ex_dat_dec %>%
   labs(x = "Decade [CE]", y = "Decadal temperature anomaly [°C]")
 ```
 
+
+# Additional metadata table for records in used pairs
+
+```{r}
+pairs_metadata <- coralclimatedata::ch2k_d18O_SrCa_meta %>%
+  right_join(., coral_pairs_years_meta) %>%
+  select(c(
+    "pair", "dist_km", "paleoData_TSid", "hasResolution_nominal", 
+    "geo_latitude", "geo_longitude",
+    "top_year", "bottom_year",
+    "last_joint_year", "first_joint_year",
+    "prior_years", "joint_years", "diff_prior_years",
+    "mean_prior_years", "years_simulated",
+    "calibration_dataset",
+    "calibration_datasetRange", "calibration_equationIntercept",
+    "calibration_equationR2", "calibration_equationSlope",
+    "calibration_equationSlopeUncertainty",
+    "calibration_method", "geo_description", "geo_ocean", "geo_ocean2",
+    "geo_secondarySiteName", "geo_siteName",
+    "additionalDataUrl", "lipdverseLink", "originalDataUrl",
+    "paleoData_archiveSpecies",
+    "paleoData_coralExtensionRate", "paleoData_coralExtensionRateNotes",
+    "paleoData_coreName", "paleoData_notes",
+    "paleoData_samplingNotes", "paleoData_samplingResolution", "paleoData_variableName",
+    "pub1_citation", "pub1_doi", "pub2_citation", "pub3_citation",
+    "geo_elevation"
+  ))
+
+readODS::write_ods(pairs_metadata, "../data/pairs_metadata.ods")
+```
+
+
+
+
+## SNR agains other meta data
+
+```{r}
+pairs_metadata %>% 
+  select(pair, dist_km, hasResolution_nominal, first_joint_year, geo_description) %>% 
+  pivot_wider(., id_cols = pair)
+```
+
+```{r}
+coral_specs_var_fband_meta <- left_join(coral_specs_var_fband, coral_pairs_meta) %>% 
+  mutate(habitat_pair = paste0(geo_description_a, " vs. ", geo_description_b))
+```
+
+
+### Open ocean^2 vs. others
+
+```{r}
+fig_SNR_habitat <-  coral_specs_var_fband_meta %>% 
+  filter(SNR > 0, dist_km < 100) %>% 
+  filter(paleoData_variableName == "SrCa") %>% 
+  filter(f_band_name != "Decadal to\nCentennial") %>% 
+  ggplot(aes(x = habitat_pair, y = (SNR),
+             colour = f_band_name, fill = f_band_name, 
+             shape = cut(dist_km, breaks = c(0, 1, 10, 100)))
+         ) +
+  #geom_boxplot(position = position_dodge(width = 1), alpha = 0.5) +
+  geom_point(position = position_jitterdodge(dodge.width = 1/2, jitter.width = 0.25)) +
+  geom_vline(xintercept = max_dist, linetype = 2) +
+  scale_y_log10(labels = scales::comma) +
+  #scale_x_log10(breaks = c(0, 1, 10, 100, 1000)) +
+  #geom_smooth(method = "lm") +
+  annotation_logticks(sides = "lb") +
+  labs(y = "Signal to Noise ratio", 
+       fill = "", colour = "",
+       x = "Habitat") +
+  scale_color_viridis_d(aesthetics = c("fill", "colour"), end = 0.9) +
+  theme_bw()+
+  theme(panel.grid.minor = element_blank()) +
+  coord_flip() +
+  facet_wrap(~paleoData_variableName, ncol = 2)
+
+fig_SNR_habitat
+```
+
+
+```{r}
+fig_SNR_dist_SrCa <-  coral_specs_var_fband_meta %>% 
+  filter(SNR > 0) %>% 
+  filter(dist_km <= 100) %>% 
+  filter(paleoData_variableName == "SrCa") %>% 
+  filter(f_band_name != "Decadal to\nCentennial") %>% 
+  mutate(habitat_pair = ifelse(habitat_pair == "open ocean vs. open ocean",
+                               "(both open ocean)", "(other combination)")) %>% 
+  ggplot(aes(x = dist_km+0.1, y = (SNR),
+             colour = paste(f_band_name),
+             fill = paste(f_band_name),
+             #shape = habitat_pair,
+             linetype = habitat_pair)
+         ) +
+  geom_point() +
+  #geom_vline(xintercept = max_dist, linetype = 2) +
+  scale_y_log10(labels = scales::comma) +
+  scale_x_log10(breaks = c(0, 1, 10, 100, 1000)) +
+  geom_smooth(method = "lm") +
+  annotation_logticks(sides = "lb") +
+  labs(y = "Signal to Noise ratio", 
+       fill = "Timescale", 
+       colour = "Timescale", 
+       shape = "",
+       linetype = "Location type",
+       x = "Mean pairwise distance [km+0.1]") +
+  scale_color_viridis_d(aesthetics = c("fill", "colour"), end = 0.9) +
+  #scale_color_brewer(palette = "Paired", aesthetics = c("fill", "colour")) +
+  theme_bw()+
+  theme(panel.grid.minor = element_blank()) +
+  facet_wrap(~paleoData_variableName)
+
+
+fig_SNR_dist_SrCa
+```
+
+
+
+## Comparison of SNR between long and short records
+
+```{r}
+coral_specs_reg_lowF <- coral_specs_reg %>%
+  filter(complete.cases(spec)) %>% 
+  filter(pair %in% pairs_to_use$pair) %>% 
+  group_by(pair) %>%
+  mutate(min_f = min(freq)) %>% 
+  filter(min_f <= 1/100)
+
+coral_specs_reg_mean_lowF <- coral_specs_reg_lowF %>% 
+  group_by(spec_id, paleoData_variableName, freq) %>%
+  summarise(mean_dist_km = mean(dist_km),
+            n_pairs = sum(is.na(spec)==FALSE),
+            se = sd(spec, na.rm = TRUE) / sqrt(n_pairs),
+            mad_e = 1.2533 * mad(spec, na.rm = TRUE) / sqrt(n_pairs),
+            spec_mean = mean(spec, na.rm = TRUE),
+            spec_median = median(spec, na.rm = TRUE),
+            .groups = "keep") %>%
+  pivot_longer(starts_with("spec_m"), 
+               values_to = "spec", 
+               names_to = "statistic") %>%
+  mutate(#spec_id = name,
+         lim.2 = ifelse(statistic == "spec_mean",
+                        spec - se, spec - mad_e),
+         lim.1 = ifelse(statistic == "spec_mean",
+                        spec + se, spec + mad_e)) %>%
+  group_by(spec_id, freq) %>% 
+  summarise_if(is.numeric, mean) %>% 
+  as_spec_df()
+
+
+coral_specs_reg_highF <- coral_specs_reg %>%
+  filter(complete.cases(spec)) %>% 
+  filter(pair %in% pairs_to_use$pair) %>% 
+  group_by(pair) %>%
+  mutate(min_f = min(freq)) %>% 
+  filter(min_f >= 1/30) 
+
+coral_specs_reg_mean_highF <- coral_specs_reg_highF %>% 
+  group_by(spec_id, paleoData_variableName, freq) %>%
+  summarise(mean_dist_km = mean(dist_km),
+            n_pairs = sum(is.na(spec)==FALSE),
+            se = sd(spec, na.rm = TRUE) / sqrt(n_pairs),
+            mad_e = 1.2533 * mad(spec, na.rm = TRUE) / sqrt(n_pairs),
+            spec_mean = mean(spec, na.rm = TRUE),
+            spec_median = median(spec, na.rm = TRUE),
+            .groups = "keep") %>%
+  pivot_longer(starts_with("spec_m"), 
+               values_to = "spec", 
+               names_to = "statistic") %>%
+  mutate(#spec_id = name,
+         lim.2 = ifelse(statistic == "spec_mean",
+                        spec - se, spec - mad_e),
+         lim.1 = ifelse(statistic == "spec_mean",
+                        spec + se, spec + mad_e)) %>%
+  group_by(spec_id, freq) %>% 
+  summarise_if(is.numeric, mean) %>% 
+  as_spec_df()
+```
+
+```{r}
+table(coral_specs_reg_lowF$pair %in% coral_specs_reg_highF$pair)
+```
+
+
+```{r, warning=FALSE}
+bind_rows(long = coral_specs_reg_mean_lowF, short = coral_specs_reg_mean_highF,
+          .id = "record_length") %>% 
+   filter(#statistic == "spec_median", 
+         spec_id == "SignalNoise", 
+         freq <= 1/2) %>% 
+  as_spec_df() %>% 
+  gg_spec(., colour = record_length, group = record_length) +
+  scale_y_log10(limits = c(0.01, 10))
+
+
+```
 
 
