@@ -597,22 +597,6 @@ SpecRatio <- function(S1, S2){
   return(S3)
 }
 
-
-
-AddConfIntervalRatio <- function(spec, pval = 0.05, MINVALUE = 1e-10) {
-  
-  #is.spectrum(spec)
-  
-  spec$lim.1 <- qf(c(1 - pval / 2), spec$dof1, spec$dof2) * spec$spec
-  spec$lim.2 <- qf(c(pval / 2), spec$dof1, spec$dof2) * spec$spec 
-  
-  spec$lim.1[spec$lim.1 < MINVALUE] <- MINVALUE
-  spec$lim.2[spec$lim.2 < MINVALUE] <- MINVALUE
-  
-  return(spec)
-  
-}
-
 AddConfIntervalRatio2 <- function(spec, pval = 0.05, MINVALUE = 1e-10) {
   
   #is.spectrum(spec)
@@ -628,163 +612,163 @@ AddConfIntervalRatio2 <- function(spec, pval = 0.05, MINVALUE = 1e-10) {
 }
 
 
-### plotting functions ------
-
-#' Title
-#'
-#' @param x 
-#' @param gg 
-#' @param conf 
-#' @param spec_id 
-#' @param colour 
-#' @param group 
-#' @param alpha.line 
-#' @param alpha.ribbon 
-#' @param removeFirst 
-#' @param removeLast 
-#' @param min.colours 
-#' @param force.lims 
-#'
-#' @return
-#' @export
-#'
-#' @examples
-gg_spec2 <- function(x, gg = NULL,
-                     conf = TRUE,
-                     spec_id = NULL,
-                     colour = spec_id,
-                     group = spec_id,
-                     #linetype = spec_id,
-                     alpha.line = 1,
-                     alpha.ribbon = c(0.166, 0.333),
-                     removeFirst = 0, removeLast = 0,
-                     min.colours = 2,
-                     force.lims = FALSE,
-                     quantiles = FALSE) {
-  
-  gg_installed <- requireNamespace("ggplot2", quietly = TRUE)
-  
-  if (gg_installed == FALSE){
-    stop("package ggplot2 is required to use gg_spec(). To install ggplot2, run install.packages(\"ggplot2\") from the console")
-  }
-  
-  if (class(x)[1] != "spec_df" & "list" %in% class(x) == FALSE){
-    x <- list(x)
-    names(x) <- spec_id
-  }
-  
-  if (class(x)[1] != "spec_df"){
-    df <- Spec2DF(x)
-  } else {
-    df <- x
-  }
-  
-  
-  if (removeFirst > 0) {
-    df <- df %>% 
-      group_by({{group}}) %>% 
-      filter(rank(df$freq) > removeFirst)
-    
-    #[rank(df$freq) > removeFirst, ]
-  }
-  
-  if (removeLast > 0) {
-    df <- df[rank(-df$freq) > removeLast,]
-  }
-  
-  if (exists("spec_id", df) == FALSE){
-    df$spec_id <- 1
-  }
-  
-  
-  if (is.numeric(df$spec_id)){
-    df$spec_id <- as.character(df$spec_id)
-  }
-  
-  
-  
-  if (is.null(gg)) {
-    p <- ggplot2::ggplot(data = df, aes(group = {{group}}))
-  } else {
-    p <- gg
-  }
-  
-  # rename to PSD so that y axis label can be overwritten later
-  df$PSD <- df$spec
-  df$Frequency <- df$freq
-  
-  df <- as.data.frame(df)
-  
-  if (conf == TRUE & exists("lim.1", df)){
-    
-    if (nrow(df) > 1e04 & force.lims == FALSE){
-      warning("geom_ribbon is very slow when the number of points > 1e04, skipping the confidence region")
-    } else {
-      
-      p <- p +
-        ggplot2::geom_ribbon(data = df, ggplot2::aes(x = Frequency, ymin = lim.2,
-                                                     #group = spec_id,
-                                                     ymax = lim.1, fill = {{ colour }}),
-                             alpha = alpha.ribbon[1], colour = NA)
-    }
-  }
-  
-  if (quantiles == TRUE & exists("X2.5.", df)){
-    
-    if (nrow(df) > 1e04 & force.lims == FALSE){
-      warning("geom_ribbon is very slow when the number of points > 1e04, skipping the confidence region")
-    } else {
-      
-      p <- p +
-        ggplot2::geom_ribbon(data = df, ggplot2::aes(x = Frequency, ymin = `X2.5.`,
-                                                     #group = spec_id,
-                                                     ymax = `X97.5.`, fill = {{ colour }}),
-                             alpha = alpha.ribbon[1], colour = NA)+
-        ggplot2::geom_ribbon(data = df, ggplot2::aes(x = Frequency, ymin = `X15.9.`,
-                                                     #group = spec_id,
-                                                     ymax = `X84.1.`, fill = {{ colour }}),
-                             alpha = alpha.ribbon[2], colour = NA)
-    }
-  }
-  
-  p <- p + ggplot2::geom_line(data = df, ggplot2::aes(x = Frequency, y = PSD,
-                                                      #group = spec_id,
-                                                      #linetype = {{ linetype }},
-                                                      colour = {{ colour }}),
-                              alpha = alpha.line
-  ) +
-    ggplot2::scale_x_continuous(trans = "log10",
-                                sec.axis = ggplot2::sec_axis(~ 1/., "Timescale")) +
-    ggplot2::scale_y_continuous(trans = "log10") +
-    ggplot2::annotation_logticks(sides = "tlb") +
-    ggplot2::theme_bw() +
-    ggplot2::scale_colour_brewer("",
-                                 type = "qual",
-                                 palette = "Dark2",
-                                 aesthetics = c("colour", "fill")) +
-    ggplot2::theme(panel.grid.minor = ggplot2::element_blank()) +
-    ggplot2::scale_alpha()
-  
-  g <- ggplot2::ggplot_build(p)
-  colrs <- unlist(unique(sapply(g$data, function(x) unique(x["colour"])$colour)))
-  colrs <- colrs[is.na(colrs) == FALSE]
-  ncolrs <- length(colrs)
-  
-  
-  
-  if (ncolrs <= min.colours){
-    
-    p <- p + ggplot2::scale_colour_manual("", values = "black",
-                                          aesthetics = c("colour", "fill"))
-    
-    if (is.null({{ colour }})){
-      p <- p + ggplot2::theme(legend.position = "none")
-    }
-    
-  }
-  
-  p
-}
+#' ### plotting functions ------
+#' 
+#' #' Title
+#' #'
+#' #' @param x 
+#' #' @param gg 
+#' #' @param conf 
+#' #' @param spec_id 
+#' #' @param colour 
+#' #' @param group 
+#' #' @param alpha.line 
+#' #' @param alpha.ribbon 
+#' #' @param removeFirst 
+#' #' @param removeLast 
+#' #' @param min.colours 
+#' #' @param force.lims 
+#' #'
+#' #' @return
+#' #' @export
+#' #'
+#' #' @examples
+#' gg_spec2 <- function(x, gg = NULL,
+#'                      conf = TRUE,
+#'                      spec_id = NULL,
+#'                      colour = spec_id,
+#'                      group = spec_id,
+#'                      #linetype = spec_id,
+#'                      alpha.line = 1,
+#'                      alpha.ribbon = c(0.166, 0.333),
+#'                      removeFirst = 0, removeLast = 0,
+#'                      min.colours = 2,
+#'                      force.lims = FALSE,
+#'                      quantiles = FALSE) {
+#'   
+#'   gg_installed <- requireNamespace("ggplot2", quietly = TRUE)
+#'   
+#'   if (gg_installed == FALSE){
+#'     stop("package ggplot2 is required to use gg_spec(). To install ggplot2, run install.packages(\"ggplot2\") from the console")
+#'   }
+#'   
+#'   if (class(x)[1] != "spec_df" & "list" %in% class(x) == FALSE){
+#'     x <- list(x)
+#'     names(x) <- spec_id
+#'   }
+#'   
+#'   if (class(x)[1] != "spec_df"){
+#'     df <- Spec2DF(x)
+#'   } else {
+#'     df <- x
+#'   }
+#'   
+#'   
+#'   if (removeFirst > 0) {
+#'     df <- df %>% 
+#'       group_by({{group}}) %>% 
+#'       filter(rank(df$freq) > removeFirst)
+#'     
+#'     #[rank(df$freq) > removeFirst, ]
+#'   }
+#'   
+#'   if (removeLast > 0) {
+#'     df <- df[rank(-df$freq) > removeLast,]
+#'   }
+#'   
+#'   if (exists("spec_id", df) == FALSE){
+#'     df$spec_id <- 1
+#'   }
+#'   
+#'   
+#'   if (is.numeric(df$spec_id)){
+#'     df$spec_id <- as.character(df$spec_id)
+#'   }
+#'   
+#'   
+#'   
+#'   if (is.null(gg)) {
+#'     p <- ggplot2::ggplot(data = df, aes(group = {{group}}))
+#'   } else {
+#'     p <- gg
+#'   }
+#'   
+#'   # rename to PSD so that y axis label can be overwritten later
+#'   df$PSD <- df$spec
+#'   df$Frequency <- df$freq
+#'   
+#'   df <- as.data.frame(df)
+#'   
+#'   if (conf == TRUE & exists("lim.1", df)){
+#'     
+#'     if (nrow(df) > 1e04 & force.lims == FALSE){
+#'       warning("geom_ribbon is very slow when the number of points > 1e04, skipping the confidence region")
+#'     } else {
+#'       
+#'       p <- p +
+#'         ggplot2::geom_ribbon(data = df, ggplot2::aes(x = Frequency, ymin = lim.2,
+#'                                                      #group = spec_id,
+#'                                                      ymax = lim.1, fill = {{ colour }}),
+#'                              alpha = alpha.ribbon[1], colour = NA)
+#'     }
+#'   }
+#'   
+#'   if (quantiles == TRUE & exists("X2.5.", df)){
+#'     
+#'     if (nrow(df) > 1e04 & force.lims == FALSE){
+#'       warning("geom_ribbon is very slow when the number of points > 1e04, skipping the confidence region")
+#'     } else {
+#'       
+#'       p <- p +
+#'         ggplot2::geom_ribbon(data = df, ggplot2::aes(x = Frequency, ymin = `X2.5.`,
+#'                                                      #group = spec_id,
+#'                                                      ymax = `X97.5.`, fill = {{ colour }}),
+#'                              alpha = alpha.ribbon[1], colour = NA)+
+#'         ggplot2::geom_ribbon(data = df, ggplot2::aes(x = Frequency, ymin = `X15.9.`,
+#'                                                      #group = spec_id,
+#'                                                      ymax = `X84.1.`, fill = {{ colour }}),
+#'                              alpha = alpha.ribbon[2], colour = NA)
+#'     }
+#'   }
+#'   
+#'   p <- p + ggplot2::geom_line(data = df, ggplot2::aes(x = Frequency, y = PSD,
+#'                                                       #group = spec_id,
+#'                                                       #linetype = {{ linetype }},
+#'                                                       colour = {{ colour }}),
+#'                               alpha = alpha.line
+#'   ) +
+#'     ggplot2::scale_x_continuous(trans = "log10",
+#'                                 sec.axis = ggplot2::sec_axis(~ 1/., "Timescale")) +
+#'     ggplot2::scale_y_continuous(trans = "log10") +
+#'     ggplot2::annotation_logticks(sides = "tlb") +
+#'     ggplot2::theme_bw() +
+#'     ggplot2::scale_colour_brewer("",
+#'                                  type = "qual",
+#'                                  palette = "Dark2",
+#'                                  aesthetics = c("colour", "fill")) +
+#'     ggplot2::theme(panel.grid.minor = ggplot2::element_blank()) +
+#'     ggplot2::scale_alpha()
+#'   
+#'   g <- ggplot2::ggplot_build(p)
+#'   colrs <- unlist(unique(sapply(g$data, function(x) unique(x["colour"])$colour)))
+#'   colrs <- colrs[is.na(colrs) == FALSE]
+#'   ncolrs <- length(colrs)
+#'   
+#'   
+#'   
+#'   if (ncolrs <= min.colours){
+#'     
+#'     p <- p + ggplot2::scale_colour_manual("", values = "black",
+#'                                           aesthetics = c("colour", "fill"))
+#'     
+#'     if (is.null({{ colour }})){
+#'       p <- p + ggplot2::theme(legend.position = "none")
+#'     }
+#'     
+#'   }
+#'   
+#'   p
+#' }
 
 ## Utilities ----
 

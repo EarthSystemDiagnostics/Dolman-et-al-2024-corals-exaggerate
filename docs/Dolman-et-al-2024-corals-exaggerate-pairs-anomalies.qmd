@@ -47,8 +47,6 @@ if(!require(proxysnr)){
     remotes::install_github("EarthSystemDiagnostics/proxysnr")
     library(proxysnr)
 }
-
-
 ```
 
 ## Additional custom functions
@@ -109,7 +107,7 @@ coral_pairs_sub0_anom <- coral_pairs_sub0 %>%
   ungroup()
 
 
-coral_pairs_sub0 <- bind_rows(means = coral_pairs_sub0, anoms = coral_pairs_sub0_anom, .id = "t_type")
+coral_pairs_sub0 <- bind_rows(means = coral_pairs_sub0, anomalies = coral_pairs_sub0_anom, .id = "t_type")
 ```
 
 
@@ -170,15 +168,15 @@ OISST_ann <- readRDS("../data/OISST2_ch2k_remap_int.rds") %>%
   summarise(SST_OISST2_dis = mean(SST_OISST2_dis, na.rm = TRUE))
 
 OISST_ann_pairs <- coral_pairs_sub %>% 
-  select(pair, dist_km, overlap_years, resolution, paleoData_ch2kCoreCode,
+  select(t_type, pair, dist_km, overlap_years, resolution, paleoData_ch2kCoreCode,
          paleoData_variableName, paleoData_TSid, member) %>% 
   distinct() %>% 
   left_join(., OISST_ann, relationship = "many-to-many") %>% 
   ungroup() %>% 
-  select(pair, paleoData_variableName, dist_km, overlap_years, resolution,
+  select(t_type, pair, paleoData_variableName, dist_km, overlap_years, resolution,
          member, year, SST_OISST2_dis) %>% 
   pivot_wider(names_from = member, values_from = SST_OISST2_dis) %>% 
-  group_by(pair) %>% 
+  group_by(t_type, pair) %>% 
    # mutate(a2 = pracma::detrend(a),
    #        b2 = pracma::detrend(b)
    #        ) %>% 
@@ -187,7 +185,7 @@ OISST_ann_pairs <- coral_pairs_sub %>%
           )
 
 OISST_pair_rho <- OISST_ann_pairs %>% 
-  group_by(pair, paleoData_variableName, dist_km, overlap_years, resolution) %>% 
+  group_by(t_type, pair, paleoData_variableName, dist_km, overlap_years, resolution) %>% 
   summarise(rho = as.numeric(cor(a2, b2)))
 
 OISST_pair_rho %>% 
@@ -210,7 +208,9 @@ OISST_pair_rho %>%
   theme(panel.grid = element_blank()) +
   #scale_x_sqrt(labels = scales::comma) +
   scale_y_continuous(breaks = c(seq(0, 0.99, length.out = 4))) +
+  facet_wrap(~t_type) +
   labs(x = "Pairwise distance [km]")
+
 ```
 
 
@@ -1067,7 +1067,7 @@ if (file.exists("..data/coral_specs_reg_mean_boot.RData") == FALSE | file.exists
   
 coral_specs_reg_mean_boot <- boot_spec %>% 
   group_by(spec_id, paleoData_variableName, statistic, freq) %>% 
-  hamstr:::summarise_q(., var = spec)
+  summarise_q_2(., var = spec)
 
 coral_specs_reg_mean_boot_degC <- coral_specs_reg_mean_boot %>%
   as_tibble() %>% 
@@ -1803,9 +1803,8 @@ Mean residual from Sr/Ca and d18O in units of temperature
 ```{r}
 regr_resids %>% 
   group_by(t_type, paleoData_variableName) %>% 
-  hamstr:::summarise_q(., resid_proxy_lm)
+  summarise_q_2(., resid_proxy_lm)
 ```
-
 
 
 ```{r}
@@ -2023,7 +2022,7 @@ logger_ratio_site_run_spec <- readRDS("../data/logger_OISST_ratio_site_run_spec_
 logger_ratio_site_run_bw <- logger_ratio_site_run_spec %>% 
   mutate(spec_id = "Individual sites") %>% 
   rename(t_type = type) %>% 
-  mutate(t_type = ifelse(t_type == "Daily anomalies", "anoms", "means")) %>% 
+  mutate(t_type = ifelse(t_type == "Daily anomalies", "anomalies", "means")) %>% 
   #left_join(., depth_key) %>% 
     mutate(f_band_name = cut(freq, 
                       breaks = c(1/30, 1/10, 1/2, 2, 12, 182),
@@ -2276,8 +2275,9 @@ PlotSNRStackBoot(
 ```{r}
 fig_SNR_dist_SrCa <-  coral_specs_var_fband %>% 
   filter(SNR > 0) %>% 
+  filter(dist_km <= 1000) %>% 
   filter(paleoData_variableName == "SrCa") %>% 
-  filter(f_band_name != "Decadal to\nCentennial") %>% 
+  filter(f_band_name != "Inter-decadal to\ndecadal") %>% 
   ggplot(aes(x = dist_km+0.1, y = (SNR),
              colour = f_band_name, fill = f_band_name)
          ) +
@@ -2451,7 +2451,8 @@ readODS::write_ods(pairs_metadata, "../data/pairs_metadata.ods")
 
 ```{r}
 coral_specs_var_fband_meta <- left_join(coral_specs_var_fband, coral_pairs_meta) %>% 
-  mutate(habitat_pair = paste0(geo_description_a, " vs. ", geo_description_b))
+  mutate(habitat_pair = paste0(geo_description_a, " vs. ", geo_description_b)) #%>% 
+  #mutate(habitat_pair = gsub("NA", "Unknown", habitat_pair, fixed = TRUE))
 ```
 
 
@@ -2461,17 +2462,14 @@ coral_specs_var_fband_meta <- left_join(coral_specs_var_fband, coral_pairs_meta)
 fig_SNR_habitat <-  coral_specs_var_fband_meta %>% 
   filter(SNR > 0, dist_km <= 100) %>% 
   filter(paleoData_variableName == "SrCa") %>% 
-  filter(f_band_name != "Decadal to\nCentennial") %>% 
+  filter(f_band_name != "Inter-decadal to\ndecadal") %>% 
   ggplot(aes(x = habitat_pair, y = (SNR),
              colour = f_band_name, fill = f_band_name, 
              shape = cut(dist_km, breaks = c(0, 1, 10, 100), include.lowest = TRUE))
          ) +
-  #geom_boxplot(position = position_dodge(width = 1), alpha = 0.5) +
   geom_point(position = position_jitterdodge(dodge.width = 1/2, jitter.width = 0.25)) +
   geom_vline(xintercept = max_dist, linetype = 2) +
   scale_y_log10(labels = scales::comma) +
-  #scale_x_log10(breaks = c(0, 1, 10, 100, 1000)) +
-  #geom_smooth(method = "lm") +
   annotation_logticks(sides = "lb") +
   labs(y = "Signal to Noise ratio", 
        fill = "Timescale", colour = "Timescale",
@@ -2517,7 +2515,7 @@ fig_SNR_dist_SrCa <-  coral_specs_var_fband_meta %>%
   #scale_color_brewer(palette = "Paired", aesthetics = c("fill", "colour")) +
   theme_bw()+
   theme(panel.grid.minor = element_blank()) +
-  facet_wrap(~paleoData_variableName+t_type)
+  facet_grid(f_band~paleoData_variableName+t_type, scales = "free_y")
 
 
 fig_SNR_dist_SrCa
