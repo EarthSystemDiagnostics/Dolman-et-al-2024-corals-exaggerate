@@ -79,7 +79,7 @@ SST_prod_to_use <- "SST_OISST2_dis"
 # use cached bootstrap?
 use_cache = TRUE
 
-n_boot <- 10000
+n_boot <- 100
 ```
 
 # Load paired coral data
