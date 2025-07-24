@@ -1,0 +1,269 @@
+---
+title: "prep data"
+format: html
+editor: source
+editor_options: 
+  chunk_output_type: console
+---
+
+## Geographical clusters
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+```
+
+Use quasi-monthly data, have been interpolated to the mid-point of each month for better alignment. 
+
+```{r}
+ch2k_d18O_SrCa_qmon <- readRDS("../data/ch2k_d18O_SrCa_qmon.RDS")
+```
+
+
+No interpolation more than 1 month. 
+
+Create "time space" summary table with start and end times for each record + location
+
+```{r}
+ch2k_d18O_SrCa_time_space <- ch2k_d18O_SrCa_qmon %>% 
+  filter(interpolated == "interp", 
+         complete.cases(paleoData_values)) %>% 
+  select(paleoData_TSid, paleoData_variableName, geo_longitude, geo_latitude, year.dec) %>% 
+  group_by(paleoData_TSid, paleoData_variableName, geo_longitude, geo_latitude) %>% 
+  summarise(first_year.dec = min(year.dec, na.rm = TRUE), 
+            last_year.dec = max(year.dec, na.rm = TRUE))
+```
+
+Create pairwise distance matrix and transform to dataframe. 
+
+```{r}
+distm <- ch2k_d18O_SrCa_time_space %>% 
+  ungroup() %>% 
+  select(geo_longitude, geo_latitude) %>% 
+  geosphere::distm(.) 
+
+distm <- round((distm / 1000), 2)
+
+colnames(distm) <- ch2k_d18O_SrCa_time_space$paleoData_TSid
+rownames(distm) <- ch2k_d18O_SrCa_time_space$paleoData_TSid
+
+distm[lower.tri(distm, diag = TRUE)] <- NA
+
+
+dist_df <- distm %>% 
+  as_tibble(., rownames = "record1") %>% 
+  pivot_longer(cols = -record1, names_to = "record2", values_to = "dist_km") %>% 
+  filter(is.na(dist_km) == FALSE)
+```
+
+
+Join distance data to time data to get record pairs with pairwise distance and joint start end times.
+
+```{r}
+full_pairs <- left_join(dist_df, ch2k_d18O_SrCa_time_space,
+                        by = join_by("record1" == "paleoData_TSid")) %>% 
+  left_join(., ch2k_d18O_SrCa_time_space,
+            by = join_by("record2" == "paleoData_TSid"), suffix = c("1", "2")) %>% 
+  mutate(time_overlap = pmin(last_year.dec1, last_year.dec2) - 
+           pmax(first_year.dec1, first_year.dec2) + 1/12,
+         first_joint_year.dec = pmax(first_year.dec1, first_year.dec2), 
+         last_joint_year.dec = pmin(last_year.dec1, last_year.dec2))
+```
+
+Subset of best pairs with distance threshold and minimum time overlap
+
+```{r}
+best_pairs <- full_pairs %>% 
+  filter(time_overlap >= 10, 
+         dist_km <= 1000, 
+         paleoData_variableName1 == paleoData_variableName2) %>% 
+  mutate(pair = paste0(record1, "-", record2))
+```
+
+
+Create long version of best_pairs in prep to join data. 
+
+```{r}
+pair_idx <- bind_rows(best_pairs %>% 
+  select(record1, pair, dist_km, first_joint_year.dec, last_joint_year.dec) %>% 
+    rename(paleoData_TSid = record1),
+  best_pairs %>% 
+  select(record2, pair, dist_km, first_joint_year.dec, last_joint_year.dec)%>% 
+    rename(paleoData_TSid = record2)
+  ) %>% 
+  distinct() %>% 
+  group_by(pair) %>% 
+  mutate(member = letters[as.numeric(as.factor(paleoData_TSid))])
+```
+
+
+```{r}
+pair_data <- ch2k_d18O_SrCa_qmon %>%
+  # use the data that have been interpolated to midpoint of the month
+  filter(interpolated == "interp") %>% 
+  filter(paleoData_TSid %in% best_pairs$record1 | paleoData_TSid %in% best_pairs$record2) %>% 
+  full_join(pair_idx, .) %>% 
+  filter(year.dec >= first_joint_year.dec, year.dec <= last_joint_year.dec) %>% 
+  left_join(., 
+            select(ch2k_d18O_SrCa_meta, paleoData_TSid,
+                   geo_description)
+            ) %>% 
+  select(-paleoData_samplingResolution, -paleoData_units, -analyticalError)
+```
+
+## Visual inspection of the data
+
+```{r}
+pair_data %>%
+  filter(dist_km < 101) %>% 
+  ggplot(aes(x = year.dec, y = paleoData_values, group = paleoData_TSid, colour = member)) +
+  geom_line() +
+  facet_wrap(~dist_km + pair, scales = "free")
+```
+
+# Do gap filling with ApproxABit and SSA
+
+Use ApproxABit to interpolate up to 2 months to make bimonthly data monthly
+
+```{r}
+source("functions.R")
+```
+
+```{r}
+pair_data <- pair_data %>%  
+  group_by(pair, paleoData_TSid, paleoData_variableName,
+           hasResolution_nominal, dist_km, member, interpolated, 
+           first_joint_year.dec, last_joint_year.dec) %>% 
+  reframe(
+     ApproxABit(x = year.dec,
+                y = paleoData_values,
+                xout = seq(min(year)+(0.5*1/12), ceiling(max(year.dec)), by = 1/12),
+                max_dx = 2/12,
+                return = "dataframe")
+  ) %>% 
+  rename(paleoData_values = y, 
+         year.dec = x) %>% 
+  filter(year.dec >= first_joint_year.dec, year.dec <= last_joint_year.dec)
+```
+
+Use SSA to fill longer gaps
+
+```{r}
+library(Rssa)
+```
+
+```{r}
+pair_data_ssa <- pair_data %>% 
+  group_by(pair, paleoData_TSid) %>% 
+  mutate(n_gaps = sum(is.na(paleoData_values)),
+            p_gaps = n_gaps / n()) %>% 
+  filter(n_gaps > 0) %>% 
+  group_by(pair, dist_km, paleoData_TSid) %>% 
+  arrange(year.dec) %>% 
+  do({
+    
+    print(unique(.$paleoData_TSid))
+  
+    ssa_values = igapfill(ssa(ts(.$paleoData_values), force.decompose = FALSE),
+                          group = list(1:4))
+    
+    tibble(year.dec = .$year.dec, paleoData_values = .$paleoData_values,
+           pair = .$pair,
+           n_gaps = .$n_gaps,
+           p_gaps = .$p_gaps,
+           ssa_values = ssa_values)
+  })
+```
+
+Join meta data back on
+
+```{r}
+pair_data_ssa_filled <- left_join(pair_data, pair_data_ssa) %>% 
+  mutate(ssa_values = ifelse(is.na(ssa_values), paleoData_values, ssa_values)) %>% 
+  left_join(., 
+            select(ch2k_d18O_SrCa_meta, paleoData_TSid, paleoData_ch2kCoreCode,
+                   paleoData_archiveSpecies, geo_description)
+            ) %>%  
+  mutate(date = lubridate::date_decimal(year.dec),
+         year = lubridate::year(date),
+         month = lubridate::month(date),
+         doy = lubridate::yday(date)
+         )
+```
+
+### Visual data inspection
+
+- infilled data highlighted
+- interactively subset examine in detail 
+
+```{r}
+pair_data_ssa_filled %>% 
+  left_join(., 
+            select(ch2k_d18O_SrCa_meta,
+                   paleoData_TSid, hasResolution_nominal)) %>% 
+  filter(dist_km <= 100) %>% 
+  ggplot(aes(x = year.dec, y = ssa_values, colour = hasResolution_nominal,
+             group = paleoData_TSid)) +
+  geom_line() +
+  geom_point(data = filter(pair_data_ssa, is.na(paleoData_values), dist_km <= 100),
+             aes(y = ssa_values, colour = "ssa")) +
+  geom_line(aes(y = paleoData_values)) +
+  facet_wrap(~pair, scales = "free", labeller = label_both)
+```
+
+
+# Attach OISSTv2 and ERSSTv5 data
+
+```{r}
+OISST2_ch2k_remap_int <- readRDS("../data/OISST2_ch2k_remap_int.RDS")
+ERSSTv5_ch2k_remap_int <- readRDS("../data/ERSSTv5_ch2k_remap_int.RDS")
+```
+
+
+```{r}
+pair_data_ssa_filled_OISST_ERSST <- pair_data_ssa_filled %>% 
+  left_join(., select(OISST2_ch2k_remap_int, paleoData_ch2kCoreCode,
+                      year, month, starts_with("SST_"))) %>% 
+  left_join(., select(ERSSTv5_ch2k_remap_int, paleoData_ch2kCoreCode,
+                      year, month, starts_with("SST_")))
+```
+
+### Visual data inspection
+
+- interactively subset examine in detail 
+
+```{r}
+pair_data_ssa_filled_OISST_ERSST %>% 
+  group_by(paleoData_TSid) %>% 
+  mutate(SST_proxy = ifelse(paleoData_variableName == "d18O", 
+                            scale(ssa_values, scale = FALSE) * 1/-0.22,
+                            scale(ssa_values, scale = FALSE) * 1/-0.06) 
+         ) %>% 
+  mutate(SST_OISST2_dis = scale(SST_OISST2_dis, scale = FALSE),
+         SST_ERSST5_dis = scale(SST_ERSST5_dis, scale = FALSE)) %>% 
+  filter(dist_km <= 100) %>% 
+  ggplot(aes(x = year.dec, y = SST_proxy, colour = member)) +
+  geom_line(aes(y = SST_OISST2_dis, colour = "OISST"), lty = 2) +
+  geom_line(aes(y = SST_ERSST5_dis, colour = "ERSST"), lty = 2) +
+  geom_line() +
+  facet_wrap(~pair + dist_km, scales = "free", labeller = label_both)
+```
+
+
+### Additional meta data
+
+```{r}
+pair_data_ssa_filled_OISST_ERSST <- pair_data_ssa_filled_OISST_ERSST %>% 
+  left_join(., 
+            select(ch2k_d18O_SrCa_meta, 
+                   paleoData_TSid, geo_longitude, geo_latitude, geo_elevation,
+                   minYear, maxYear)
+            )%>% 
+  mutate(resolution = "mon")
+
+```
+
+
+```{r}
+saveRDS(pair_data_ssa_filled_OISST_ERSST, "../data/pair_data_ssa_filled_OISST_ERSST.RDS")
+```

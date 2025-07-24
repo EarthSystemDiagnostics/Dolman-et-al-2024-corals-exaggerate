@@ -79,13 +79,16 @@ SST_prod_to_use <- "SST_OISST2_dis"
 # use cached bootstrap?
 use_cache = TRUE
 
-n_boot <- 100
+n_boot <- 10000
 ```
 
 # Load paired coral data
 
 ```{r}
-coral_pairs_sub0 <- readRDS("../data/coral_pairs_sub0_mon.rds")
+## load prepared coral and gSST data
+## data prep scripts are in ../data-raw/
+
+coral_pairs_sub0 <- readRDS("../data/pair_data_ssa_filled_OISST_ERSST.RDS")
 
 coral_pairs_sub0 <- coral_pairs_sub0 %>% 
   mutate(paleoData_variableName = factor(paleoData_variableName,

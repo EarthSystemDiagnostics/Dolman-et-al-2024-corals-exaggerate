@@ -786,4 +786,51 @@ summarise_q_2 <- function (dat, var, probs =
     dplyr::as_tibble()
 }
 
+#' Interpolate Over a Limited Distance Leaving Gaps
+#'
+#' @param x
+#' @param y
+#' @param xout
+#' @param method
+#' @param rule
+#' @param max_dx
+#' @param return
+#'
+#' @return
+#' @export
+#'
+#' @examples
+ApproxABit <- function(x, y, xout,
+                       method = "linear",
+                       rule = 2, #ties = mean,
+                       max_dx = NULL,
+                       return = c("list", "dataframe")){
+  
+  return <- match.arg(return)
+  
+  o <- order(x)
+  x <- x[o]
+  y <- y[o]
+  
+  if (is.null(max_dx)){
+    max_dx <- median(diff(x))
+  }
+  
+  xout <- sort(xout)
+  
+  yout <- approx(x, y, xout, method = method, rule = rule#, ties = ties
+  )$y
+  
+  # get nearest x to xout
+  x_exists <- x[is.na(y) == FALSE]
+  dxout <- abs(xout - sapply(xout, function(i) x_exists[which.min(abs(x_exists-i))]))
+  yout[dxout > max_dx] <- NA
+  
+  if (return == "list"){
+    out <- list(x = xout, y = yout)
+  } else if (return == "dataframe"){
+    out <- data.frame(x = xout, y = yout)
+  }
+  return(out)
+}
 

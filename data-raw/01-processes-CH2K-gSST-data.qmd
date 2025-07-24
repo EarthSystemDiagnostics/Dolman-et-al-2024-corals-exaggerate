@@ -1,0 +1,420 @@
+---
+title: "Import CH2K data and match gSST"
+format: html
+editor: source
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(lipdR)
+```
+
+Use R serialisation of CoralHydro2k 
+
+https://doi.org/10.25921/yp94-v135
+https://www.ncei.noaa.gov/metadata/geoportal/rest/metadata/item/noaa-coral-35453/html
+
+## Import all records
+
+```{r}
+#load("../data-raw/CoralHydro2k1_0_0.RData")
+load("../data-raw/CoralHydro2k_R.RData")
+
+coral <- lipdR::tidyTs(TS)%>% 
+  select(
+    where(
+      ~!all(is.na(.x))
+    )
+  ) %>% 
+  mutate(year.dec = year) %>% 
+  mutate(date = lubridate::date_decimal(year.dec),
+         year = lubridate::year(date),
+         month = lubridate::month(date),
+         doy = lubridate::yday(date)
+         ) %>% 
+  group_by(paleoData_ch2kCoreCode, paleoData_variableName, datasetId, year) %>%
+  mutate(n = n()) %>% 
+  ungroup()
+
+glimpse(coral)
+
+rm(TS, sTS, D)
+```
+
+## Create analyticalError to standardise proportional and absolute error
+
+```{r}
+# a given record only has 1 unique value for its proportional or absolute error
+# but after converting prop to abs, the new abs are ofcourse unique to each 
+# measurement
+ch2k_d18O_SrCa <- coral %>% 
+  filter(paleoData_variableName %in% c("d18O", "SrCa")) %>% 
+  select(
+    where(
+      ~!all(is.na(.x))
+    )
+  ) %>% 
+   mutate(paleoData_analyticalError = as.numeric(paleoData_analyticalError),
+         analyticalError = 
+           ifelse(paleoData_analyticalErrorUnits %in% c("% RSD", "%RSD" ),
+                  paleoData_values * 0.01 * paleoData_analyticalError,
+                  paleoData_analyticalError)) %>% 
+  mutate(paleoData_coralExtensionRate = as.numeric(paleoData_coralExtensionRate))
+```
+
+
+## create metadata tables
+
+```{r}
+ch2k_d18O_SrCa_meta_num <- ch2k_d18O_SrCa %>% 
+  group_by(paleoData_TSid) %>% 
+  select(paleoData_TSid, where(is.numeric)) %>% 
+  #select(-changelog, where(is.numeric), paleoData_TSid) %>% 
+  pivot_longer(-paleoData_TSid) %>% 
+  group_by(paleoData_TSid) %>% 
+  distinct() %>% 
+  group_by(paleoData_TSid, name) %>% 
+  mutate(n = n_distinct(value)) %>% 
+  # keep only where single value for each *all* records
+  group_by(name) %>% 
+  mutate(all_n_1 = all(n == 1)) %>% 
+  filter(all_n_1 == TRUE) %>% 
+  select(-n, -all_n_1) %>% 
+  pivot_wider(names_from = name, values_from = value) %>% 
+  ungroup()
+
+
+ch2k_d18O_SrCa_meta_char <- ch2k_d18O_SrCa %>% 
+  group_by(paleoData_TSid) %>% 
+  select(paleoData_TSid, where(is.character)) %>% 
+  #select(-changelog, where(is.numeric), paleoData_TSid) %>% 
+  pivot_longer(-paleoData_TSid, values_transform = as.character) %>% 
+  group_by(paleoData_TSid) %>% 
+  distinct() %>% 
+  group_by(paleoData_TSid, name) %>% 
+  mutate(n = n_distinct(value)) %>% 
+  # keep only where single value for each *all* records
+  group_by(name) %>% 
+  mutate(all_n_1 = all(n == 1)) %>% 
+  filter(all_n_1 == TRUE) %>% 
+  select(-n, -all_n_1) %>% 
+  pivot_wider(names_from = name, values_from = value) %>% 
+  ungroup()
+
+
+ch2k_d18O_SrCa_meta <- full_join(ch2k_d18O_SrCa_meta_char, ch2k_d18O_SrCa_meta_num)
+```
+
+
+
+```{r}
+source("../docs/functions.R")
+```
+
+## Select approximately monthly resolution records and interpolate to regular monthly series
+
+Interpolate to regular mid month points, but leave gaps when gap > 1 month?
+
+```{r}
+coral_qmon <- coral %>% 
+  filter(#hasResolution_nominal == "bimonthly_uneven",
+    hasResolution_nominal %in% c("bimonthly_uneven", "bimonthly", "monthly", "monthly_uneven"),
+    paleoData_variableName %in% c("d18O", "SrCa"),
+    complete.cases(paleoData_values, year.dec)) %>% 
+  select(
+    where(
+      ~!all(is.na(.x))
+    )
+  ) %>% 
+  group_by(paleoData_TSid) %>% 
+  mutate(n = n()) %>% 
+  filter(n > 2) %>% 
+  ungroup() %>% 
+  select(paleoData_TSid, paleoData_values, year, year.dec, hasResolution_nominal)
+
+ 
+raw <- coral_qmon 
+
+interp <- raw %>%  
+  group_by(paleoData_TSid, hasResolution_nominal) %>% 
+  reframe(
+     ApproxABit(x = year.dec,
+                y = paleoData_values,
+                xout = seq(min(year)+(0.5*1/12), ceiling(max(year.dec)), by = 1/12),
+                max_dx = 1/12,
+                return = "dataframe")
+  ) %>% 
+  rename(paleoData_values = y, 
+         year.dec = x)
+```
+
+Join interpolated and "raw" data, make id column.
+
+```{r}
+coral_qmon_interp <- bind_rows(raw = raw, interp = interp, .id = "interpolated") %>% 
+   mutate(date = lubridate::date_decimal(year.dec),
+         year = lubridate::year(date),
+         month = lubridate::month(date),
+         doy = lubridate::yday(date)
+         )
+```
+
+
+### Add metadata
+
+```{r}
+ch2k_d18O_SrCa_qmon_interp <- left_join(coral_qmon_interp, ch2k_d18O_SrCa_meta) %>% 
+  select(
+    where(
+      ~!all(is.na(.x))
+    )
+  ) %>% 
+   mutate(paleoData_analyticalError = as.numeric(paleoData_analyticalError),
+         analyticalError = 
+           ifelse(paleoData_analyticalErrorUnits %in% c("% RSD", "%RSD" ),
+                  paleoData_values * 0.01 * paleoData_analyticalError,
+                  paleoData_analyticalError)) %>% 
+  mutate(paleoData_coralExtensionRate = as.numeric(paleoData_coralExtensionRate)) 
+```
+
+Clean up intermediate data frames
+
+```{r}
+rm(ch2k_d18O_SrCa_meta_char, ch2k_d18O_SrCa_meta_num,
+   coral)
+```
+
+
+## Select a subset of useful columns
+
+```{r}
+ch2k_d18O_SrCa <- ch2k_d18O_SrCa %>% 
+  select(paleoData_ch2kCoreCode, paleoData_archiveSpecies, paleoData_coralExtensionRate,
+         paleoData_TSid, geo_latitude, geo_longitude,
+         paleoData_variableName,
+         year, month, year.dec,
+         paleoData_values, analyticalError, paleoData_units,
+         paleoData_samplingResolution, 
+         hasResolution_nominal
+         )
+
+ch2k_d18O_SrCa_qmon <- ch2k_d18O_SrCa_qmon_interp %>% 
+   select(interpolated, paleoData_ch2kCoreCode, paleoData_archiveSpecies, paleoData_coralExtensionRate,
+         paleoData_TSid, geo_latitude, geo_longitude,
+         paleoData_variableName,
+         year, month, year.dec,
+         paleoData_values, analyticalError, paleoData_units,
+         paleoData_samplingResolution, hasResolution_nominal
+         )
+```
+
+```{r}
+saveRDS(ch2k_d18O_SrCa_qmon, file = "../data/ch2k_d18O_SrCa_qmon.RDS")
+```
+
+## Get OISST for coral locations using cdo commands for bilinear interpolation
+
+```{r}
+library(tidync)
+
+fl_OISST <- "../data-raw/NOAA_OI_SST_V2.nc"
+tidync::tidync(fl_OISST)
+```
+
+
+
+
+```{r}
+lon180To360 <- function(lon){
+  ifelse(lon < 0, 360 -- lon, lon)
+}
+
+lon360To180 <- function(lon){
+  ifelse(lon > 180, lon - 360, lon)
+}
+lon180To360(-10)
+lon360To180(350)
+
+```
+
+
+```{r}
+extract_data_with_cdo_dis <- function(
+    nc_file, lat, lon, data_var) {
+
+  tfile <- tempfile()
+
+  # Construct the CDO command
+  cdo_command <- sprintf(
+    "cdo remapdis,lon=%f/lat=%f -selname,%s %s %s",
+    lon, lat, data_var, nc_file, tfile)
+
+  #return(cdo_command)
+  # Execute the CDO command
+  system(cdo_command)
+
+  # Read the output file
+  result <- tidync::hyper_tibble(tfile)
+
+  # Clean up: delete the temporary output file
+  file.remove(tfile)
+
+  # Return the result
+  return(result)
+}
+
+# quick test
+extract_data_with_cdo_dis(
+  fl_OISST,
+  0.13, 98, "sst"
+)
+```
+
+```{r}
+ch2k_coords <- ch2k_d18O_SrCa %>% 
+  select(paleoData_ch2kCoreCode, geo_longitude, geo_latitude) %>% 
+  distinct()
+
+ch2k_coords_OISST2_remapdis <- ch2k_coords %>% 
+  group_by(paleoData_ch2kCoreCode, geo_longitude, geo_latitude) %>% 
+  do({
+    extract_data_with_cdo_dis(
+      fl_OISST,
+      lat = .$geo_latitude, lon = lon180To360(.$geo_longitude),
+      "sst"
+    )
+  })
+
+ch2k_coords_OISST2_remap <- ch2k_coords_OISST2_remapdis %>% 
+  rename(SST_OISST2_dis = sst)
+```
+
+## Create time variables
+
+```{r}
+OISST2_ch2k_remap <- ch2k_coords_OISST2_remap %>% 
+  mutate(date = as.POSIXct(time*24*60*60,
+                           origin = "1800-1-1 00:00:00"),
+         year = lubridate::year(date),
+         month = lubridate::month(date),
+         year.dec = year + (month * 1/12 - 1/12))
+```
+
+Interpolate to midpoint of month
+
+```{r}
+OISST2_ch2k_remap_int <- OISST2_ch2k_remap %>%  
+  group_by(paleoData_ch2kCoreCode, geo_longitude, geo_latitude, lon, lat) %>% 
+  pivot_longer(starts_with("SST_OISST2"), names_to = "type", values_to = "OISST") %>% 
+  filter(complete.cases(OISST)) %>% 
+  group_by(paleoData_ch2kCoreCode, geo_longitude, geo_latitude, lon, lat, type) %>% 
+  reframe(
+     ApproxABit(x = year.dec,
+                y = OISST,
+                xout = seq(min(year)+(0.5*1/12), ceiling(max(year.dec)), by = 1/12),
+                max_dx = 1/12,
+                return = "dataframe")
+  ) %>% 
+  rename(OISST = y, 
+         year.dec = x) %>% 
+  pivot_wider(names_from = type, values_from = OISST) %>% 
+  mutate(date = lubridate::date_decimal(year.dec),
+         year = lubridate::year(date),
+         month = lubridate::month(date))
+```
+
+
+```{r}
+OISST2_ch2k_remap_int %>% 
+  pivot_longer(starts_with("SST"), names_to = "method", values_to = "SST") %>% 
+  group_by(paleoData_ch2kCoreCode, method) %>% 
+  mutate(SST = scale(SST, scale = FALSE)) %>% 
+  group_by(paleoData_ch2kCoreCode, method, year) %>% 
+  summarise_if(is.numeric, mean) %>% 
+  ggplot(aes(x = year, y = SST, colour = method, group = paste(method, paleoData_ch2kCoreCode))) +
+  geom_line() +
+  facet_wrap(~method)
+```
+
+
+```{r}
+saveRDS(OISST2_ch2k_remap_int, "../data/OISST2_ch2k_remap_int.RDS")
+```
+
+
+## Extract ERSST5 for coral locations
+
+```{r}
+fl_ERSST <- "../data-raw/sst.mnmean.2025.01.28.nc"
+tidync::tidync(fl_ERSST)
+```
+
+
+
+
+```{r}
+ch2k_coords <- ch2k_d18O_SrCa %>% 
+  select(paleoData_ch2kCoreCode, geo_longitude, geo_latitude) %>% 
+  distinct()
+
+ch2k_coords_ERSST5_remapdis <- ch2k_coords %>% 
+  group_by(paleoData_ch2kCoreCode, geo_longitude, geo_latitude) %>% 
+  do({
+    extract_data_with_cdo_dis(
+      fl_ERSST,
+      lat = .$geo_latitude, lon = lon180To360(.$geo_longitude),
+      "sst"
+    )
+  })
+
+ch2k_coords_ERSST5_remap <- ch2k_coords_ERSST5_remapdis %>% 
+  rename(SST_ERSST5_dis = sst)
+```
+
+```{r}
+ERSSTv5_ch2k_remap <- ch2k_coords_ERSST5_remap %>% 
+  mutate(date = as.POSIXct(time*24*60*60,
+                           origin = "1800-1-1 00:00:00"),
+         year = lubridate::year(date),
+         month = lubridate::month(date),
+         year.dec = year + (month * 1/12 - 1/24))
+
+#usethis::use_data(ERSSTv5_ch2k_remap, overwrite = TRUE)
+```
+
+Interpolate to midpoint of month
+
+```{r}
+ERSSTv5_ch2k_remap_int <- ERSSTv5_ch2k_remap %>%  
+  group_by(paleoData_ch2kCoreCode, geo_longitude, geo_latitude, lon, lat) %>% 
+  pivot_longer(starts_with("SST_ERSST"), names_to = "type", values_to = "ERSST") %>% 
+  filter(complete.cases(ERSST)) %>% 
+  group_by(paleoData_ch2kCoreCode, geo_longitude, geo_latitude, lon, lat, type) %>% 
+  reframe(
+     ApproxABit(x = year.dec,
+                y = ERSST,
+                xout = seq(min(year)+(0.5*1/12), ceiling(max(year.dec)), by = 1/12),
+                max_dx = 1/12,
+                return = "dataframe")
+  ) %>% 
+  rename(ERSST = y, 
+         year.dec = x) %>% 
+  pivot_wider(names_from = type, values_from = ERSST) %>% 
+  mutate(date = lubridate::date_decimal(year.dec),
+         year = lubridate::year(date),
+         month = lubridate::month(date))
+```
+
+```{r}
+saveRDS(ERSSTv5_ch2k_remap_int, "../data/ERSSTv5_ch2k_remap_int.RDS")
+```
+
+

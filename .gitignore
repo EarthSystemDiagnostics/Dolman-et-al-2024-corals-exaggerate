@@ -47,3 +47,6 @@ po/*~
 rsconnect/
 docs/figures
 *.pdf
+
+# Ignore netcdf files
+*.nc
