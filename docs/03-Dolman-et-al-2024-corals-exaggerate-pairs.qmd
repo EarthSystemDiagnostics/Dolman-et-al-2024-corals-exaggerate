@@ -38,17 +38,10 @@ library(ccaPP)
 ## Required packages from Github
 
 ```{r load_github_packages}
-if(!require(PaleoSpec)){
-    remotes::install_github("EarthSystemDiagnostics/paleospec")
-    library(PaleoSpec)
-}
-
 if(!require(proxysnr)){
     remotes::install_github("EarthSystemDiagnostics/proxysnr")
     library(proxysnr)
 }
-
-
 ```
 
 ## Additional custom functions
@@ -789,7 +782,7 @@ ERSST_pairs_binned_wide <- ERSST_pairs_binned %>%
 
      colnames(m) <- NULL
 
-     m <- PaleoSpec:::TrimNA(m)
+     m <- TrimNA(m)
     tibble(
       pair_size = ncol(m),
       n_gaps = sum(is.na(m)),
@@ -835,7 +828,7 @@ ERSST_specs_reg <- ERSST_specs %>%
 
     sr <- as.spec(list(freq = .$freq, spec = .$spec, dof = .$dof))
 
-    si <- PaleoSpec::SpecInterpolate(sr,
+    si <- SpecInterpolate(sr,
                                      freqRef = rfreq,
                                      check = FALSE)
 
@@ -913,7 +906,7 @@ coral_specs_reg <- coral_specs %>%
     rfreq = seq(strt_f, maxf, strt_f)
     
     sr <- as.spec(list(freq = .$freq, spec = .$spec, dof = .$dof))
-    si <- PaleoSpec::SpecInterpolate(sr,
+    si <- SpecInterpolate(sr,
                                      freqRef = rfreq,
                                      check = FALSE)
     
@@ -1590,7 +1583,7 @@ SST_specs_reg <- SST_specs %>%
     
     sr <- as.spec(list(freq = dat$freq, spec = dat$spec, dof = dat$dof))
     
-    si <- PaleoSpec::SpecInterpolate(sr,
+    si <- SpecInterpolate(sr,
                                      freqRef = rfreq,
                                      check = FALSE)
     
@@ -1628,8 +1621,7 @@ c_specs_var <- coral_specs %>%
   do({
    sp1 <- DF2Spec(.)
    
-   #print(min(sp1$freq))
-   var <- PaleoSpec::GetVarFromSpectra(sp1, f = c(min(sp1$freq), 1/2))$var
+   var <- GetVarFromSpectra(sp1, f = c(min(sp1$freq), 1/2))$var
    
    tibble(var_proxy = var, n_freq = length(sp1$freq))
    
@@ -1645,10 +1637,7 @@ c_specs_var_SST <- SST_specs %>%
   do({
    sp1 <- DF2Spec(.)
    
-   # print(.$pair[1])
-   # print(.$SST_product[1])
-   # print(min(sp1$freq))
-   var <- PaleoSpec::GetVarFromSpectra(sp1, f = c(min(sp1$freq), 1/2))$var
+   var <- GetVarFromSpectra(sp1, f = c(min(sp1$freq), 1/2))$var
    
    tibble(var_SST = var)
    
@@ -1847,19 +1836,19 @@ resid.specs_w_reg <- resid.specs_w %>%
     minf <- 0.01 # min(bin.ind.spec.df$freq)
     maxf <- max(resid.specs_w$freq)
     rfreq = seq(minf, maxf, minf*2)
-    SNR <- PaleoSpec::SpecInterpolate(
+    SNR <- SpecInterpolate(
       list(freq = .$freq, spec = .$SNR, dof = .$dof),
                                      freqRef = rfreq)
 
-    S_proxy <- PaleoSpec::SpecInterpolate(
+    S_proxy <- SpecInterpolate(
       list(freq = .$freq, spec = .$proxy, dof = .$dof),
                                      freqRef = rfreq)
 
-    S_resids <- PaleoSpec::SpecInterpolate(
+    S_resids <- SpecInterpolate(
       list(freq = .$freq, spec = .$resid_proxy_lm, dof = .$dof),
                                                    freqRef = rfreq)
 
-    S_fttd <- PaleoSpec::SpecInterpolate(
+    S_fttd <- SpecInterpolate(
       list(freq = .$freq, spec = .$fttd_proxy_lm, dof = .$dof),
                                                    freqRef = rfreq)
 
@@ -2109,9 +2098,9 @@ if (file.exists("~/Dropbox/Work/AWI/working-data-files/corals-exaggerate/coral_p
     model = "bernoulli",
     rate = c(.$error_rate, .$error_rate)/2,
     df.log = NULL,
-    pad = TRUE,
-    surrogate.fun = PaleoSpec::SimPLS,
-    fun.par = list(beta = beta, alpha = alpha)
+    pad = TRUE #,
+    #surrogate.fun = SimPLS,
+    #fun.par = list(beta = beta, alpha = alpha)
     ))
     
     sp1$dof <- 2
@@ -2310,7 +2299,7 @@ spliced_spec <- bind_rows(
   do({
     sp1 <- DF2Spec(.)
     
-    sp2 <- PaleoSpec::SpecInterpolate(sp1, seq(1/1000, 6, 1/1000))
+    sp2 <- SpecInterpolate(sp1, seq(1/1000, 6, 1/1000))
     
     Spec2DF(sp2)
   }) %>% 

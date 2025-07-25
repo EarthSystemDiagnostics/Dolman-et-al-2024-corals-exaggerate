@@ -14,6 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(dplyr)
 library(tidyr)
+library(tidync)
 library(lipdR)
 ```
 
@@ -25,7 +26,6 @@ https://www.ncei.noaa.gov/metadata/geoportal/rest/metadata/item/noaa-coral-35453
 ## Import all records
 
 ```{r}
-#load("../data-raw/CoralHydro2k1_0_0.RData")
 load("../data-raw/CoralHydro2k_R.RData")
 
 coral <- lipdR::tidyTs(TS)%>% 
@@ -222,9 +222,12 @@ saveRDS(ch2k_d18O_SrCa_qmon, file = "../data/ch2k_d18O_SrCa_qmon.RDS")
 
 ## Get OISST for coral locations using cdo commands for bilinear interpolation
 
-```{r}
-library(tidync)
+Available here: 
+https://psl.noaa.gov/data/gridded/data.noaa.oisst.v2.highres.html
 
+File approximately 2GB,  named "sst.mon.mean.nc"
+
+```{r}
 fl_OISST <- "../data-raw/NOAA_OI_SST_V2.nc"
 tidync::tidync(fl_OISST)
 ```
@@ -352,12 +355,13 @@ saveRDS(OISST2_ch2k_remap_int, "../data/OISST2_ch2k_remap_int.RDS")
 
 ## Extract ERSST5 for coral locations
 
+Current version available here:
+https://www.ncei.noaa.gov/pub/data/cmb/ersst/v5/v6/one.big.file/ersst.v6.1850-2024.nc
+
 ```{r}
 fl_ERSST <- "../data-raw/sst.mnmean.2025.01.28.nc"
 tidync::tidync(fl_ERSST)
 ```
-
-
 
 
 ```{r}
@@ -387,7 +391,6 @@ ERSSTv5_ch2k_remap <- ch2k_coords_ERSST5_remap %>%
          month = lubridate::month(date),
          year.dec = year + (month * 1/12 - 1/24))
 
-#usethis::use_data(ERSSTv5_ch2k_remap, overwrite = TRUE)
 ```
 
 Interpolate to midpoint of month
