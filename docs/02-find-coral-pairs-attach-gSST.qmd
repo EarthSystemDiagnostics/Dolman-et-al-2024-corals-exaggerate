@@ -13,7 +13,8 @@ library(dplyr)
 library(tidyr)
 ```
 
-Use quasi-monthly data, have been interpolated to the mid-point of each month for better alignment. 
+Use quasi-monthly data, these have been interpolated to the mid-point of each month for better alignment. 
+
 
 ```{r}
 ch2k_d18O_SrCa_qmon <- readRDS("../data/ch2k_d18O_SrCa_qmon.RDS")

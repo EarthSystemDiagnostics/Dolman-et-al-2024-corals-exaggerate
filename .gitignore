@@ -50,3 +50,5 @@ docs/figures
 
 # Ignore netcdf files
 *.nc
+
+*boot*.*
