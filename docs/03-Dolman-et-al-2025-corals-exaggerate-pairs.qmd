@@ -226,6 +226,8 @@ Keep only pairs with correlation >= 0.99
 pairs_to_use <- OISST_pair_rho %>% 
   filter(resolution %in% c("mon"),
          rho >= min_rho)
+
+saveRDS(pairs_to_use, file = "../data/pairs_to_use.RDS")
 ```
 
 
@@ -1038,7 +1040,7 @@ BootAndSummarise <- function(dat) {
 #### Runs with reduced number of replication (100) for speed. 10000 replications used in manuscript
 
 ```{r load_boot, cache.lazy = FALSE}
-if (file.exists("..data/coral_specs_reg_mean_boot.RData") == FALSE | file.exists("..data/coral_specs_reg_mean_boot_degC.RData") == FALSE |
+if (file.exists("../data/coral_specs_reg_mean_boot.RData") == FALSE | file.exists("../data/coral_specs_reg_mean_boot_degC.RData") == FALSE |
     use_cache == FALSE) {
   if (file.exists("../data/coral_pair_specs_boot.RData") == FALSE | 
       use_cache == FALSE) {
@@ -2093,9 +2095,9 @@ coral_pairs_years_meta_pair <- coral_pairs_years_meta %>%
 
 
 ```{r}
-if (file.exists("~/Dropbox/Work/AWI/working-data-files/corals-exaggerate/coral_pairs_time_TF.RData")){
+if (file.exists("../data/coral_pairs_time_TF.RData")){
   
-  coral_pairs_time_TF <- readRDS("~/Dropbox/Work/AWI/working-data-files/corals-exaggerate/coral_pairs_time_TF.RData")
+  coral_pairs_time_TF <- readRDS("../data/coral_pairs_time_TF.RData")
   
 } else {
  coral_pairs_time_TF <- coral_pairs_years_meta %>% 
@@ -2141,7 +2143,7 @@ if (file.exists("~/Dropbox/Work/AWI/working-data-files/corals-exaggerate/coral_p
   as_spec_df()
 
   saveRDS(coral_pairs_time_TF,
-        "~/Dropbox/Work/AWI/working-data-files/corals-exaggerate/coral_pairs_time_TF.RData")
+        "../data/coral_pairs_time_TF.RData")
  
 }
  
