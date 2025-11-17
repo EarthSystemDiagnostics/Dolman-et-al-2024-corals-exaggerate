@@ -567,6 +567,9 @@ rr <- fig_sd_dec +
 
 fig_var_ill <- patchwork::wrap_plots(l, r) 
 fig_var_ill
+
+ggsave(plot = fig_var_ill,
+       filename = "production-figures/Fig1bc.tiff")
 ```
 
 
@@ -673,11 +676,14 @@ fig_sd_ann_d18O_Genus <- ann_SD %>%
 ## Supplementary data Fig 1
 
 ```{r fig_show_issue_Genus, fig.width=9, fig.height=8, warning=FALSE}
-patchwork::wrap_plots(fig_sd_mon_Genus, fig_sd_ann_Genus, 
+fig_S2 <- patchwork::wrap_plots(fig_sd_mon_Genus, fig_sd_ann_Genus, 
                       fig_sd_mon_d18O_Genus, fig_sd_ann_d18O_Genus, 
                       guides = "auto") +
   patchwork::plot_annotation(tag_levels = "a")
 
+ggsave(plot = fig_S2,
+       width = 8, height = 8,
+       filename = "production-figures/FigS2.tiff")
 
 ```
 
@@ -1336,7 +1342,7 @@ fig_S_components_degC <- PlotSNRStackBoot_byVar(coral_specs_reg_mean_boot_degC,
 ### Fig 2a-c
 
 ```{r fig_Clim_Instr_degC_No_Comp, fig.height=8, warning=FALSE}
-patchwork::wrap_plots(
+fig_2ac <- patchwork::wrap_plots(
   fig_S_Clim_Instr_degC + 
     coord_cartesian(xlim = c(0.01, 1/2), ylim = c(1e-02, 3e00))+ 
     theme(axis.text.x.bottom = element_blank(),
@@ -1354,6 +1360,12 @@ patchwork::wrap_plots(
   fig_S_components_degC,
   ncol = 1, heights = c(4, 2, 4)) +
   labs(tag = "c")
+
+fig_2ac
+
+ggsave(plot = fig_2ac,
+       width = 8, height = 9,
+       filename = "production-figures/Fig2ac.tiff")
 ```
 
 
@@ -1492,7 +1504,7 @@ boot_var_fband_summary <- boot_var_fband %>%
 ## Fig 4 - Inflation factor 
 
 ```{r fig_inflation_factor, fig.width = 5}
-boot_var_fband_summary %>% 
+fig4 <- boot_var_fband_summary %>% 
   ggplot(aes(x = f_band_name, y = `50%`, colour = paleoData_variableName)) +
   geom_linerange(aes(ymax = `97.5%`, ymin = `2.5%`),
                  alpha = 1, position = position_dodge(width = 1/4)) +
@@ -1511,9 +1523,15 @@ boot_var_fband_summary %>%
   annotation_logticks(sides = "l") +
   scale_y_log10(sec.axis = sec_axis(name = "Corrected / Raw Variance", 
                                     trans = ~1/.,
-                                    breaks = c(0.033, 0.1, 0.33, 1))) +
+                                    breaks = c(0.033, 0.1, 0.33, 1)),
+                breaks = c(1, 4, 9), labels = c("1 (1)", "3 (1.73)", "10 (3.16)")) +
   theme(legend.position = "top", panel.grid.major.x = element_blank())
 
+fig4
+
+ggsave(plot = fig4,
+       width = 5, height = 4,
+       filename = "production-figures/Fig4.tiff")
 ```
 
 
@@ -1702,7 +1720,7 @@ comp_names <- tibble(
 ## Fig 3
 
 ```{r, fig.width=7, fig.height=5}
-c_specs_var_comb %>% 
+fig3 <- c_specs_var_comb %>% 
   left_join(., comp_names) %>% 
   mutate(slope = ifelse(paleoData_variableName == "d18O", 0.22, 0.06)) %>% 
   filter(complete.cases(var_SST),
@@ -1732,6 +1750,12 @@ c_specs_var_comb %>%
   expand_limits(x = c(0, 1), y = c(0,1)) +
   labs(x = "SD OISSTv2 [°C]", y = "SD scaled coral proxy [°C]", colour = "") +
   facet_grid(name ~ paleoData_variableName, labeller = Spec_SrCa_d18O_labeller)
+
+fig3 
+
+ggsave(plot = fig3,
+       width = 6, height = 6,
+       filename = "production-figures/Fig3.tiff")
 ```
 
 ### As fig 3 but using ERSST instead of OISST
@@ -1918,7 +1942,7 @@ resids_spec <- resid.specs_w_summary %>%
   mutate(spec_id = SST_product)
 ```
 
-## Fig S3 S_noise vs S_residuals
+## Fig S4 S_noise vs S_residuals
 
 ```{r fig_S_noise_resids, fig.width=8}
 regr_labs <- list(S_noise = expression("Proxy noise (" * S[noise] * ")"),
@@ -1962,13 +1986,16 @@ fig_SNR_vs_resids_low <- coral_specs_reg_mean_boot_degC %>%
   labs(colour = "", fill = "", y = expression(PSD~"[K"^{2}*"yr]"))
 
 fig_SNR_vs_resids_low
+
+ggsave(plot = fig_SNR_vs_resids_low,
+       width = 7, height = 4,
+       filename = "production-figures/FigS4.tiff")
 ```
 
 
 
 # Variance ratio corals/OISST and loggers / OISST 
 
-## Fig S4
 
 ```{r}
 coral_specs_n_pair <- coral_specs %>% 
@@ -2032,9 +2059,11 @@ logger_ratio_site_run_bw <- logger_ratio_site_run_spec %>%
   filter(f_band_name != "Monthly to inter-daily")
 ```
 
+## Fig S5
+
 ```{r}
 set.seed(20250404)
-coral_specs_n_pair_fband %>% 
+fig_S5 <- coral_specs_n_pair_fband %>% 
   filter(complete.cases(f_band)) %>% 
   select(spec_id, pair, paleoData_variableName, dist_km, f_band, f_band_name, spec) %>% 
   pivot_wider(names_from = spec_id, values_from = spec) %>% 
@@ -2050,7 +2079,11 @@ coral_specs_n_pair_fband %>%
   geom_point(position = position_jitterdodge(jitter.width = 1/8), alpha = 0.75) +
   expand_limits(y = 0) +
   scale_x_discrete(labels = ) +
-  scale_y_log10(breaks = c(0.3, 1, 3, 10, 30, 1.2)) +
+  #scale_y_log10(breaks = c(0.3, 1, 3, 10, 30, 1.2)) +
+  scale_y_log10(sec.axis = sec_axis(name = expression(sqrt("Variance ratio")~"[Coral or logger / OISST]"), 
+                                    trans = ~sqrt(.),
+                                    breaks = c(0.5, 1, 2, 3, 6, 1.2)),
+                breaks = c(0.3, 1, 3, 10, 30, 1.2)) +
   annotation_logticks(sides = "l") +
   geom_hline(yintercept = c(1), lty = 2) +
   scale_colour_manual(values = c(pal_coral_proxies, logger = "black"),
@@ -2060,6 +2093,13 @@ coral_specs_n_pair_fband %>%
   facet_grid(.~f_band_name, scales = "free_x") +
   labs(x = "Frequency band [1/years]",
        y = "Variance ratio [Coral or logger / OISST]", colour = "") 
+fig_S5
+
+ggsave(plot = fig_S5,
+       width = 9, height = 4,
+       filename = "production-figures/FigS5.tiff")
+
+
 ```
 
 
@@ -2230,11 +2270,11 @@ coral_specs_reg_mean_boot_degC_Time <- coral_specs_reg_mean_boot_degC %>%
   as_spec_df()
 ```
 
-## Fig S5
+## Fig S6
 #### Artefactual time-uncertainty noise term
 
 ```{r}
-PlotSNRStackBoot(
+fig_S6 <- PlotSNRStackBoot(
   mutate(coral_specs_reg_mean_boot_degC), 
   filter(ERSST_specs_reg_mean, SST_product == "OISSTv2"),
   #proxies = "SrCa",
@@ -2256,7 +2296,11 @@ PlotSNRStackBoot(
          fill = guide_legend(order = 1),
          linetype = guide_legend(order = 3))
 
+fig_S6
 
+ggsave(plot = fig_S6,
+       width = 7, height = 4,
+       filename = "production-figures/FigS6.tiff")
 ```
 
 
@@ -2265,7 +2309,7 @@ PlotSNRStackBoot(
 # Effect of pairwise distance on SNR and inflation factor
 
 
-## Fig S6
+## Fig S7
 
 ```{r}
 fig_SNR_dist_SrCa <-  coral_specs_var_fband %>% 
@@ -2289,6 +2333,10 @@ fig_SNR_dist_SrCa <-  coral_specs_var_fband %>%
   theme(panel.grid.minor = element_blank()) 
 
 fig_SNR_dist_SrCa
+
+ggsave(plot = fig_SNR_dist_SrCa,
+       width = 7, height = 4,
+       filename = "production-figures/FigS7.tiff")
 ```
 
 # Simulate autocorrelated errors 
@@ -2354,7 +2402,7 @@ sigsq_spec_all_white <- GetVarFromSpectra(spliced_spec,
                                           f = c(1/tau_ex, 1/(2*delta_t_ex)))$var / (10*1/delta_t_ex)
 ```
 
-## Fig S8
+## Fig S9
 
 ```{r}
 ex_dat_dec <- ex_dat %>% 
@@ -2375,7 +2423,7 @@ noise_type_labeller_2 <- ggplot2::as_labeller(
     sigma_inde = "Independent noise"))
 
 
-ex_dat_dec %>% 
+figS9 <- ex_dat_dec %>% 
   filter(noise_type != "sigma_meas") %>% 
   ggplot(aes(x = decade, y = SST_proxy)) +
   geom_line(aes(colour = noise_type)) +
@@ -2403,5 +2451,11 @@ ex_dat_dec %>%
   theme_bw() +
   theme(panel.grid = element_blank(), legend.position = "none")+
   labs(x = "Decade [CE]", y = "Decadal temperature anomaly [°C]")
+
+
+ggsave(plot = figS9,
+       width = 7, height = 5,
+       filename = "production-figures/FigS9.tiff")
+
 ```
 
