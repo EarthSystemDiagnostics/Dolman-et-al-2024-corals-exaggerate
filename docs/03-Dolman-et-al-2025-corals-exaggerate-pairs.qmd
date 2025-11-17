@@ -569,6 +569,7 @@ fig_var_ill <- patchwork::wrap_plots(l, r)
 fig_var_ill
 
 ggsave(plot = fig_var_ill,
+       width = 7, height = 4,
        filename = "production-figures/Fig1bc.tiff")
 ```
 
@@ -1307,7 +1308,7 @@ PlotSNRStackBoot_byVar <- function(
 ```
 
 
-### Fig S2
+### Fig S3
 
 ```{r, warning=FALSE}
 fig_SNR_full_Freq <- PlotSNRStackBoot(
@@ -1315,6 +1316,10 @@ fig_SNR_full_Freq <- PlotSNRStackBoot(
   ERSST_specs_reg_mean
   )
 fig_SNR_full_Freq
+
+ggsave(plot = fig_SNR_full_Freq,
+       width = 8, height = 4,
+       filename = "production-figures/FigS3.tiff")
 ```
 
 
@@ -1754,7 +1759,7 @@ fig3 <- c_specs_var_comb %>%
 fig3 
 
 ggsave(plot = fig3,
-       width = 6, height = 6,
+       width = 5, height = 5,
        filename = "production-figures/Fig3.tiff")
 ```
 
