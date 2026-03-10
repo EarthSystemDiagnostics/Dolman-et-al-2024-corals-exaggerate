@@ -111,6 +111,8 @@ n_boot <- 100
 ## data prep scripts are in ../data-raw/
 
 coral_pairs_sub0 <- readRDS("../data/pair_data_ssa_filled_OISST_ERSST.RDS")
+ch2k_d18O_SrCa_meta <- readRDS("../data/ch2k_d18O_SrCa_meta.RDS")
+
 
 coral_pairs_sub0 <- coral_pairs_sub0 %>% 
   mutate(paleoData_variableName = factor(paleoData_variableName,
@@ -166,6 +168,7 @@ stopifnot(
   length((coral_pairs_meta$pair)) == length(unique(coral_pairs_meta$pair))
   )
 ```
+
 
 
 ## OISST correlation between all pairs
@@ -273,6 +276,32 @@ genus_count <- coral_pairs_sub %>%
 
 knitr::kable(genus_count)
 ```
+
+
+## Used records + meta data
+
+```{r}
+table_S1 <- coral_pairs_sub %>%
+  filter(dist_km <= 100) %>%
+  group_by(pair, dist_km, paleoData_variableName, paleoData_TSid, genus) %>%
+  summarise(duration = round(diff(range(year.dec))),
+            overlap_years = mean(overlap_years),
+            first_joint_year = round(mean(first_joint_year.dec)),
+            last_joint_year = round(mean(last_joint_year.dec))
+            ) %>%
+  left_join(., ch2k_d18O_SrCa_meta) %>%
+  select(paleoData_variableName, pair, dist_km, paleoData_TSid,
+         paleoData_archiveSpecies,
+         duration, first_joint_year, last_joint_year,
+         geo_ocean, geo_siteName,
+         pub1_firstauthor, pub1_year) %>%
+  arrange(paleoData_variableName, desc(duration)) 
+
+knitr::kable(table_S1)
+
+writexl::write_xlsx(table_S1, "tableS1.xlsx")
+```
+
 
 
 # Illustration of the variance issue
@@ -574,119 +603,6 @@ ggsave(plot = fig_var_ill,
 ```
 
 
-### Again with colour for Genus
-
-```{r fig.width=5, fig.height = 3.5}
-fig_sd_mon_Genus <- month_SD %>% 
-  filter(SST_product %in% SST_prod_to_use,
-         complete.cases(sd_SST_mean)) %>% 
-  filter(paleoData_variableName == "SrCa") %>% 
-  ggplot(aes(x = sd_SST_mean, y = sd_proxy_mean, colour = genus
-             )) +
-  geom_linerange(aes(ymin = sd_proxy_mean - sd_proxy_sd, 
-                      ymax = sd_proxy_mean + sd_proxy_sd), alpha = 0.5) + 
-  geom_linerange(aes(xmin = sd_SST_mean - sd_SST_sd,
-                     xmax = sd_SST_mean + sd_SST_sd), alpha = 0.5) +
-  geom_point(alpha = 1) +
-  geom_abline(intercept = 0, slope = c(0.06), lty = 4, #lwd = 1,
-                                alpha = 1, colour = "Darkblue") +
-  expand_limits(y = c(0, 0.06*3), x = c(0, 3)) +
-  theme_bw() +
-  coord_fixed(ratio = 1/0.06) +
-  theme(panel.grid = element_blank(), legend.position = "none") +
-  labs(x = "SD annual cycle OISSTv2 [°C]",
-       y = "SD annual cycle Sr/Ca [mmol/mol]", colour = "Genus") +
-  scale_color_brewer("", type = "qual", palette = "Set2") 
-```
-
-```{r}
-fig_sd_ann_Genus <- ann_SD %>% 
-  filter(SST_product %in% SST_prod_to_use) %>% 
-  filter(paleoData_variableName == "SrCa") %>% 
-  ggplot(aes(x = sd_SST, y = sd_proxy, colour = genus)) +
-  geom_linerange(aes(ymin = sd_proxy - se_sd_proxy, 
-                      ymax = sd_proxy + se_sd_proxy), alpha = 0.5) + 
-  geom_linerange(aes(xmin = sd_SST - se_sd_SST,
-                     xmax = sd_SST + se_sd_SST), alpha = 0.5) +
-  geom_point(alpha = 1)+
-  geom_abline(intercept = 0, slope = 0.06, lty = 4, #lwd = 1,
-                                alpha = 1, colour = "Darkblue") +
-  scale_color_discrete("") +
-  theme_bw() +
-  coord_fixed(ratio = 1/0.06, ylim = c(0, 1.1*0.06), xlim = c(0, 1.1)) +
-  #expand_limits(x = c(0, 0.085*1/0.06), ) +
-  theme(panel.grid = element_blank(),
-        legend.text = element_text(face = "italic")) +
-  labs(x = "SD annual mean OISSTv2 [°C]", 
-       y = "SD annual mean Sr/Ca [mmol/mol]", 
-       colour = "Genus") +
-  scale_color_brewer("", type = "qual", palette = "Set2")
-
-```
-
-
-### Repeat for d18O
-
-```{r fig.width=5, fig.height = 3.5}
-fig_sd_mon_d18O_Genus <- month_SD %>% 
-  filter(SST_product %in% SST_prod_to_use, 
-         complete.cases(sd_SST_mean)) %>% 
-  filter(paleoData_variableName == "d18O") %>% 
-  ggplot(aes(x = sd_SST_mean, y = sd_proxy_mean, colour = genus)) +
-  geom_linerange(aes(ymin = sd_proxy_mean - sd_proxy_sd, 
-                      ymax = sd_proxy_mean + sd_proxy_sd), alpha = 0.5) + 
-  geom_linerange(aes(xmin = sd_SST_mean - sd_SST_sd,
-                     xmax = sd_SST_mean + sd_SST_sd), alpha = 0.5) +
-  geom_point(alpha = 1) +
-  geom_abline(intercept = 0, slope = c(0.22), lty = 4, #lwd = 1,
-                                alpha = 1, colour = "Darkblue") +
-  expand_limits(y = c(0, 0.22*2.5), x = c(0, 2.5)) +
-  theme_bw() +
-  coord_fixed(ratio = 1/0.22) +
-  theme(panel.grid = element_blank(), legend.position = "none") +
-  labs(x = "SD annual cycle OISSTv2 [°C]",
-       y = expression("SD annual cycle "*delta^18*O*" [‰]"),
-       colour = "Genus") +
-  scale_color_brewer("", type = "qual", palette = "Set2")
-```
-
-
-```{r}
-fig_sd_ann_d18O_Genus <- ann_SD %>% 
-  filter(SST_product %in% SST_prod_to_use) %>% 
-  filter(paleoData_variableName == "d18O") %>% 
-  ggplot(aes(x = sd_SST, y = sd_proxy, colour = genus)) +
-  geom_linerange(aes(ymin = sd_proxy - se_sd_proxy, 
-                      ymax = sd_proxy + se_sd_proxy), alpha = 0.5) + 
-  geom_linerange(aes(xmin = sd_SST - se_sd_SST,
-                     xmax = sd_SST + se_sd_SST), alpha = 0.5) +
-  geom_point(alpha = 1)+
-  geom_abline(intercept = 0, slope = 0.22, lty = 4, #lwd = 1,
-                                alpha = 1, colour = "Darkblue") +
-  scale_color_discrete("") +
-  theme_bw() +
-  coord_fixed(ratio = 1/0.22) +
-  expand_limits(x = c(0, 1.3), y = c(0, 0.22*1.3)) +
-  theme(panel.grid = element_blank(), legend.position = "none") +
-  labs(x = "SD annual mean OISSTv2 [°C]",
-       y = expression("SD annual mean "*delta^18*O*" [‰]"),
-       colour = "Genus") +
-  scale_color_brewer("", type = "qual", palette = "Set2")
-```
-
-## Supplementary data Fig 1
-
-```{r fig_show_issue_Genus, fig.width=9, fig.height=8, warning=FALSE}
-fig_S2 <- patchwork::wrap_plots(fig_sd_mon_Genus, fig_sd_ann_Genus, 
-                      fig_sd_mon_d18O_Genus, fig_sd_ann_d18O_Genus, 
-                      guides = "auto") +
-  patchwork::plot_annotation(tag_levels = "a")
-
-ggsave(plot = fig_S2,
-       width = 8, height = 8,
-       filename = "production-figures/FigS2.tiff")
-
-```
 
 
 
@@ -1307,6 +1223,183 @@ PlotSNRStackBoot_byVar <- function(
 }
 ```
 
+### Supplementary Figure S1 - time series plots
+
+```{r}
+coral_meta <- readRDS(file = "../data/ch2k_d18O_SrCa_meta.RDS")
+
+pub_cal <- coral_meta %>% 
+  mutate(published_cal = readr::parse_number(calibration_equationSlope)) %>% 
+  select(paleoData_TSid, published_cal) %>% 
+  mutate(published_cal = ifelse(paleoData_TSid == "ZI04IFR01_d18O",
+                                1/published_cal, published_cal)) %>% 
+  mutate(published_cal = ifelse(published_cal > 0, -published_cal, published_cal)) 
+
+coral_pairs_once_ann_cal <- coral_pairs_once %>% 
+  filter(complete.cases(SST_ERSST5_dis)) %>% 
+  group_by(paleoData_variableName, paleoData_TSid, paleoData_archiveSpecies, year) %>% 
+  mutate(n_months = n_distinct(month)) %>% 
+  group_by(paleoData_variableName, paleoData_TSid, paleoData_archiveSpecies) %>% 
+  mutate(median_m_per_year = median(n_months)) %>% 
+  group_by(paleoData_variableName, paleoData_TSid, paleoData_archiveSpecies, year) %>% 
+  summarise_if(is.numeric, mean) %>% 
+  # remove years with more than 2 missing months
+  filter(n_months > 10) %>% 
+  left_join(., pub_cal) %>% 
+  group_by(paleoData_variableName, paleoData_TSid) %>% 
+  mutate(
+    ssa_anom = ssa_values - mean(ssa_values),
+    SST_ERSST5_dis_anom = SST_ERSST5_dis - mean(SST_ERSST5_dis, na.rm = TRUE),
+    SST_OISST2_dis_anom = SST_OISST2_dis - mean(SST_OISST2_dis, na.rm = TRUE),
+    SST_proxy = ifelse(paleoData_variableName == "SrCa",
+                            ssa_anom * 1/-0.06, ssa_anom * 1/-0.22),
+    SST_proxy_pub_cal = ssa_anom * 1/published_cal)
+
+fig_ts_srca_ersst <- coral_pairs_once_ann_cal %>% 
+  filter(diff(range(year)) > 60, year >= 1900) %>% 
+  filter(complete.cases(SST_proxy_pub_cal, SST_ERSST5_dis_anom)) %>% 
+  filter(paleoData_variableName == "SrCa") %>% 
+  ggplot(aes(x = year, group = paleoData_TSid)) +
+  geom_line(aes(y = SST_ERSST5_dis_anom, colour = "ERSST")) +
+  geom_line(aes(y = SST_proxy, colour = "Proxy_STD")) +
+  geom_line(aes(y = SST_proxy_pub_cal, colour = "Proxy_pub")) +
+  facet_wrap(~paleoData_TSid, scales = "free", ncol = 3) +
+  scale_colour_manual("",
+    values = c(ERSST = "#1b9e77",  Proxy_STD = "#d95f02", Proxy_pub = "#7570b3"),
+    #breaks = c("ERSST", "Proxy_STD", "Proxy_pub"),
+    labels = c(ERSST = "ERSSTv5", 
+               Proxy_STD = expression("Reconstructed SST\n(-0.06 mmol/mol °C"^{-1}*")"), 
+               Proxy_pub = "Reconstructed SST\n(published calibrations)")
+    ) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        legend.key.spacing.y = unit(0.025, "npc")) +
+  guides(fill = guide_legend(byrow = TRUE)) +
+  labs(x = "Year CE", y = "Temperature anomaly [°C]")
+    
+fig_ts_srca_ersst
+
+ggsave(fig_ts_srca_ersst, filename = "figures/fig_ts_srca_ersst.png", height = 9,  width = 9)
+
+ggsave(fig_ts_srca_ersst, filename = "production-figures/FigS1.tiff", height = 9,  width = 9)
+```
+
+### Supplementary data Fig S2
+
+### Again with colour for Genus
+
+```{r fig.width=5, fig.height = 3.5}
+fig_sd_mon_Genus <- month_SD %>% 
+  filter(SST_product %in% SST_prod_to_use,
+         complete.cases(sd_SST_mean)) %>% 
+  filter(paleoData_variableName == "SrCa") %>% 
+  ggplot(aes(x = sd_SST_mean, y = sd_proxy_mean, colour = genus
+             )) +
+  geom_linerange(aes(ymin = sd_proxy_mean - sd_proxy_sd, 
+                      ymax = sd_proxy_mean + sd_proxy_sd), alpha = 0.5) + 
+  geom_linerange(aes(xmin = sd_SST_mean - sd_SST_sd,
+                     xmax = sd_SST_mean + sd_SST_sd), alpha = 0.5) +
+  geom_point(alpha = 1) +
+  geom_abline(intercept = 0, slope = c(0.06), lty = 4, #lwd = 1,
+                                alpha = 1, colour = "Darkblue") +
+  expand_limits(y = c(0, 0.06*3), x = c(0, 3)) +
+  theme_bw() +
+  coord_fixed(ratio = 1/0.06) +
+  theme(panel.grid = element_blank(), legend.position = "none") +
+  labs(x = "SD annual cycle OISSTv2 [°C]",
+       y = "SD annual cycle Sr/Ca [mmol/mol]", colour = "Genus") +
+  scale_color_brewer("", type = "qual", palette = "Set2") 
+```
+
+```{r}
+fig_sd_ann_Genus <- ann_SD %>% 
+  filter(SST_product %in% SST_prod_to_use) %>% 
+  filter(paleoData_variableName == "SrCa") %>% 
+  ggplot(aes(x = sd_SST, y = sd_proxy, colour = genus)) +
+  geom_linerange(aes(ymin = sd_proxy - se_sd_proxy, 
+                      ymax = sd_proxy + se_sd_proxy), alpha = 0.5) + 
+  geom_linerange(aes(xmin = sd_SST - se_sd_SST,
+                     xmax = sd_SST + se_sd_SST), alpha = 0.5) +
+  geom_point(alpha = 1)+
+  geom_abline(intercept = 0, slope = 0.06, lty = 4, #lwd = 1,
+                                alpha = 1, colour = "Darkblue") +
+  scale_color_discrete("") +
+  theme_bw() +
+  coord_fixed(ratio = 1/0.06, ylim = c(0, 1.1*0.06), xlim = c(0, 1.1)) +
+  #expand_limits(x = c(0, 0.085*1/0.06), ) +
+  theme(panel.grid = element_blank(),
+        legend.text = element_text(face = "italic")) +
+  labs(x = "SD annual mean OISSTv2 [°C]", 
+       y = "SD annual mean Sr/Ca [mmol/mol]", 
+       colour = "Genus") +
+  scale_color_brewer("", type = "qual", palette = "Set2")
+
+```
+
+
+### Repeat for d18O
+
+```{r fig.width=5, fig.height = 3.5}
+fig_sd_mon_d18O_Genus <- month_SD %>% 
+  filter(SST_product %in% SST_prod_to_use, 
+         complete.cases(sd_SST_mean)) %>% 
+  filter(paleoData_variableName == "d18O") %>% 
+  ggplot(aes(x = sd_SST_mean, y = sd_proxy_mean, colour = genus)) +
+  geom_linerange(aes(ymin = sd_proxy_mean - sd_proxy_sd, 
+                      ymax = sd_proxy_mean + sd_proxy_sd), alpha = 0.5) + 
+  geom_linerange(aes(xmin = sd_SST_mean - sd_SST_sd,
+                     xmax = sd_SST_mean + sd_SST_sd), alpha = 0.5) +
+  geom_point(alpha = 1) +
+  geom_abline(intercept = 0, slope = c(0.22), lty = 4, #lwd = 1,
+                                alpha = 1, colour = "Darkblue") +
+  expand_limits(y = c(0, 0.22*2.5), x = c(0, 2.5)) +
+  theme_bw() +
+  coord_fixed(ratio = 1/0.22) +
+  theme(panel.grid = element_blank(), legend.position = "none") +
+  labs(x = "SD annual cycle OISSTv2 [°C]",
+       y = expression("SD annual cycle "*delta^18*O*" [‰]"),
+       colour = "Genus") +
+  scale_color_brewer("", type = "qual", palette = "Set2")
+```
+
+
+```{r}
+fig_sd_ann_d18O_Genus <- ann_SD %>% 
+  filter(SST_product %in% SST_prod_to_use) %>% 
+  filter(paleoData_variableName == "d18O") %>% 
+  ggplot(aes(x = sd_SST, y = sd_proxy, colour = genus)) +
+  geom_linerange(aes(ymin = sd_proxy - se_sd_proxy, 
+                      ymax = sd_proxy + se_sd_proxy), alpha = 0.5) + 
+  geom_linerange(aes(xmin = sd_SST - se_sd_SST,
+                     xmax = sd_SST + se_sd_SST), alpha = 0.5) +
+  geom_point(alpha = 1)+
+  geom_abline(intercept = 0, slope = 0.22, lty = 4, #lwd = 1,
+                                alpha = 1, colour = "Darkblue") +
+  scale_color_discrete("") +
+  theme_bw() +
+  coord_fixed(ratio = 1/0.22) +
+  expand_limits(x = c(0, 1.3), y = c(0, 0.22*1.3)) +
+  theme(panel.grid = element_blank(), legend.position = "none") +
+  labs(x = "SD annual mean OISSTv2 [°C]",
+       y = expression("SD annual mean "*delta^18*O*" [‰]"),
+       colour = "Genus") +
+  scale_color_brewer("", type = "qual", palette = "Set2")
+```
+
+
+```{r fig_show_issue_Genus, fig.width=9, fig.height=8, warning=FALSE}
+fig_S2 <- patchwork::wrap_plots(fig_sd_mon_Genus, fig_sd_ann_Genus, 
+                      fig_sd_mon_d18O_Genus, fig_sd_ann_d18O_Genus, 
+                      guides = "auto") +
+  patchwork::plot_annotation(tag_levels = "a")
+
+ggsave(plot = fig_S2,
+       width = 8, height = 8,
+       filename = "production-figures/FigS2.tiff")
+
+```
+
+
 
 ### Fig S3
 
@@ -1762,6 +1855,48 @@ ggsave(plot = fig3,
        width = 5, height = 5,
        filename = "production-figures/Fig3.tiff")
 ```
+
+```{r}
+c_specs_var_comb %>% 
+  left_join(., comp_names) %>% 
+  left_join(., coral_pairs_meta) %>% 
+  mutate(slope = ifelse(paleoData_variableName == "d18O", 0.22, 0.06)) %>% 
+  filter(complete.cases(var_SST),
+         spec_id %in% c("S_proxy", "S_clim"), 
+         SST_product == "SST_OISST2_dis") %>% 
+  group_by(paleoData_variableName, name) %>% 
+  summarise(
+    n_mixed = sum(genus_a != genus_b),
+    n = n(),
+    p_mixed = n_mixed / n
+  )
+
+c_specs_var_comb %>% 
+  left_join(., comp_names) %>% 
+  left_join(., coral_pairs_meta) %>% 
+  mutate(slope = ifelse(paleoData_variableName == "d18O", 0.22, 0.06)) %>% 
+  filter(complete.cases(var_SST),
+         spec_id %in% c("S_proxy", "S_clim"), 
+         SST_product == "SST_OISST2_dis") %>% 
+  ggplot(aes(x = sqrt(var_SST), y = sqrt(var_proxy),
+             colour = paste0(genus_a, " vs. ", genus_b))) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0,
+              lty = 2) +
+  theme_bw() +
+  scale_color_brewer("", type = "qual", palette = "Set2") +
+    labs(x = "SD SST [°C]", y = "SD Sr/Ca [mmol/mol]",
+       colour = "") +
+  theme_bw()+
+  theme(panel.grid = element_blank()
+        ) +
+  coord_equal() +
+  expand_limits(x = c(0, 1), y = c(0,1)) +
+  labs(x = "SD OISSTv2 [°C]", y = "SD scaled coral proxy [°C]", colour = "") +
+  facet_grid(name ~ paleoData_variableName, #+ (genus_a != genus_b),
+             labeller = Spec_SrCa_d18O_labeller)
+```
+
 
 ### As fig 3 but using ERSST instead of OISST
 

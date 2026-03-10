@@ -113,6 +113,9 @@ ch2k_d18O_SrCa_meta_char <- ch2k_d18O_SrCa %>%
 ch2k_d18O_SrCa_meta <- full_join(ch2k_d18O_SrCa_meta_char, ch2k_d18O_SrCa_meta_num)
 ```
 
+```{r}
+saveRDS(ch2k_d18O_SrCa_meta, file = "../data/ch2k_d18O_SrCa_meta.RDS")
+```
 
 
 ```{r}
