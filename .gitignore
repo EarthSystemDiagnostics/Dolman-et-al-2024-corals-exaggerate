@@ -30,6 +30,7 @@ vignettes/*.pdf
 
 # knitr and R markdown default cache directories
 *_cache/
+*_files/
 /cache/
 
 # Temporary files created by R markdown
@@ -52,3 +53,14 @@ docs/figures
 *.nc
 
 *boot*.*
+
+# Ignore html and pdf in docs
+
+docs/*.html
+docs/*.pdf
+docs/*.png
+docs/*.tiff
+docs/*.xlsx
+
+*.csv
+

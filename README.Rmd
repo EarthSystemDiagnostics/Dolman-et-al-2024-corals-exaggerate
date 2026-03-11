@@ -47,5 +47,15 @@ https://www.ncei.noaa.gov/pub/data/cmb/ersst/v5/v6/one.big.file/ersst.v6.1850-20
 
 
 
-
 Dolman, A., McPartland, M., Felis, T. & Laepple, T. Coral records exaggerate past decadal tropical climate variability. Preprint at https://doi.org/10.21203/rs.3.rs-3924954/v1 (2025).
+
+
+## Data summary
+
+A summary of the records from CoralHydro2k that were used in the main analysis of Dolman et al. (2026)
+
+```{r}
+table_summary_of_paired_records <- readRDS("data/table_summary_of_paired_records.RDS")
+knitr::kable(table_summary_of_paired_records,
+             caption = "")
+```
