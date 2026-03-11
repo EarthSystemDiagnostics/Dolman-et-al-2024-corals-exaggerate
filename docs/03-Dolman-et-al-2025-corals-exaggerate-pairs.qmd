@@ -343,7 +343,7 @@ ins_mon_long <- sub_mon %>%
         plot.background = element_rect(fill='transparent', color=NA)
         ) +
   scale_color_manual(values = c(pal_coral_proxies, OISSTv2 = "#66a61e")) +
-  labs(x = "Year CE", y = "Monthly Sr/Ca [mmol/mol]", colour = "", linetype = "")
+  labs(x = "Year CE", y = expression("Monthly Sr/Ca [mmol mol"^{-1}*"]"), colour = "", linetype = "")
 
 
 ins_ann_long <- sub_ann %>% 
@@ -360,8 +360,9 @@ ins_ann_long <- sub_ann %>%
         plot.background = element_rect(fill='transparent', color=NA)
         ) +
   scale_color_manual(values = c(pal_coral_proxies, OISSTv2 = "#66a61e")) +
-  labs(x = "Year CE", y = "Annual mean Sr/Ca [mmol/mol]",
+  labs(x = "Year CE", y = expression("Annual mean Sr/Ca [mmol mol"^{-1}*"]"),
        colour = "", linetype = "")
+
 
 
 patchwork::wrap_plots(ins_mon_long, ins_ann_long, ncol = 1)
@@ -473,8 +474,8 @@ fig_sd_mon <- month_SD %>%
   coord_fixed(ratio = 1/0.06) +
   theme(panel.grid = element_blank()) +
   labs(x = "SD annual cycle OISSTv2 [°C]", 
-       y = "SD annual cycle Sr/Ca [mmol/mol]",
-       colour = "Genus") 
+       y = expression("SD annual cycle Sr/Ca [mmol mol"^{-1}*"]")) 
+
 
 #fig_sd_mon
 ```
@@ -511,9 +512,10 @@ fig_sd_ann <- ann_SD %>%
   expand_limits(x = c(0, 1.1), y = c(0, 0.06*1.1)) +
   theme(panel.grid = element_blank(), legend.position = "none") +
   labs(x = "SD annual mean OISSTv2 [°C]",
-       y = "SD annual mean Sr/Ca [mmol/mol]") +
+       y = expression("SD annual mean Sr/Ca [mmol mol"^{-1}*"]")) +
   scale_color_brewer("", type = "qual", palette = "Set2")#+
   #facet_wrap(~SST_product)
+
 
 #fig_sd_ann
 ```
@@ -547,9 +549,12 @@ fig_sd_dec <- dec_SD %>%
   expand_limits(x = c(0, 0.15*1/0.06), y = c(0, 2 * 0.06)) +
   theme(panel.grid = element_blank(), legend.position = "none") +
   labs(x = "SD decadal mean OISSTv2 [°C]",
-       y = "SD decadal mean Sr/Ca [mmol/mol]") +
+       y = expression("SD decadal mean Sr/Ca [mmol mol"^{-1}*"]")) +
   scale_color_brewer("", type = "qual", palette = "Set2")#+
   #facet_wrap(~SST_product)
+
+
+
 
 fig_sd_dec
 ```
@@ -557,7 +562,7 @@ fig_sd_dec
 ## Fig 1bc 
 
 ```{r fig_show_issue, fig.width=8}
-l <- fig_sd_mon+
+l <- fig_sd_mon +
   labs(tag = "b")  + 
   patchwork::inset_element(
   ins_mon_long + 
@@ -596,8 +601,9 @@ fig_var_ill <- patchwork::wrap_plots(l, r)
 fig_var_ill
 
 ggsave(plot = fig_var_ill,
+       device = cairo_pdf,
        width = 7, height = 4,
-       filename = "production-figures/Fig1bc.tiff")
+       filename = "production-figures/Fig1bc.svg")
 ```
 
 
@@ -1266,7 +1272,7 @@ fig_ts_srca_ersst <- coral_pairs_once_ann_cal %>%
     values = c(ERSST = "#1b9e77",  Proxy_STD = "#d95f02", Proxy_pub = "#7570b3"),
     #breaks = c("ERSST", "Proxy_STD", "Proxy_pub"),
     labels = c(ERSST = "ERSSTv5", 
-               Proxy_STD = expression("Reconstructed SST\n(-0.06 mmol/mol °C"^{-1}*")"), 
+               Proxy_STD = expression("Reconstructed\nSST (-0.06 mmol mol"^{-1}~"°C"^{-1}*")"), 
                Proxy_pub = "Reconstructed SST\n(published calibrations)")
     ) +
   theme_bw() +
@@ -1277,9 +1283,10 @@ fig_ts_srca_ersst <- coral_pairs_once_ann_cal %>%
     
 fig_ts_srca_ersst
 
-ggsave(fig_ts_srca_ersst, filename = "figures/fig_ts_srca_ersst.png", height = 9,  width = 9)
-
-ggsave(fig_ts_srca_ersst, filename = "production-figures/FigS1.tiff", height = 9,  width = 9)
+ggsave(fig_ts_srca_ersst, 
+       #device = cairo_pdf,
+       filename = "production-figures/FigS1.png",
+       height = 10,  width = 9)
 ```
 
 ### Supplementary data Fig S2
@@ -1305,8 +1312,10 @@ fig_sd_mon_Genus <- month_SD %>%
   coord_fixed(ratio = 1/0.06) +
   theme(panel.grid = element_blank(), legend.position = "none") +
   labs(x = "SD annual cycle OISSTv2 [°C]",
-       y = "SD annual cycle Sr/Ca [mmol/mol]", colour = "Genus") +
+       y = expression("SD annual cycle Sr/Ca [mmol mol"^{-1}*"]"), colour = "Genus") +
   scale_color_brewer("", type = "qual", palette = "Set2") 
+
+
 ```
 
 ```{r}
@@ -1328,9 +1337,10 @@ fig_sd_ann_Genus <- ann_SD %>%
   theme(panel.grid = element_blank(),
         legend.text = element_text(face = "italic")) +
   labs(x = "SD annual mean OISSTv2 [°C]", 
-       y = "SD annual mean Sr/Ca [mmol/mol]", 
+       y = expression("SD annual mean Sr/Ca [mmol mol"^{-1}*"]"), 
        colour = "Genus") +
   scale_color_brewer("", type = "qual", palette = "Set2")
+
 
 ```
 
@@ -1392,8 +1402,9 @@ fig_S2 <- patchwork::wrap_plots(fig_sd_mon_Genus, fig_sd_ann_Genus,
   patchwork::plot_annotation(tag_levels = "a")
 
 ggsave(plot = fig_S2,
-       width = 8, height = 8,
-       filename = "production-figures/FigS2.tiff")
+       width = 9, height = 9,
+       device = cairo_pdf,
+       filename = "production-figures/FigS2.pdf")
 
 ```
 
@@ -1409,8 +1420,9 @@ fig_SNR_full_Freq <- PlotSNRStackBoot(
 fig_SNR_full_Freq
 
 ggsave(plot = fig_SNR_full_Freq,
-       width = 8, height = 4,
-       filename = "production-figures/FigS3.tiff")
+       device = cairo_pdf,
+       width = 9, height = 5,
+       filename = "production-figures/FigS3.pdf")
 ```
 
 
@@ -1460,8 +1472,9 @@ fig_2ac <- patchwork::wrap_plots(
 fig_2ac
 
 ggsave(plot = fig_2ac,
-       width = 8, height = 9,
-       filename = "production-figures/Fig2ac.tiff")
+       device = cairo_pdf,
+       width = 9, height = 11,
+       filename = "production-figures/Fig2ac.pdf")
 ```
 
 
@@ -1626,8 +1639,9 @@ fig4 <- boot_var_fband_summary %>%
 fig4
 
 ggsave(plot = fig4,
+       device = cairo_pdf,
        width = 5, height = 4,
-       filename = "production-figures/Fig4.tiff")
+       filename = "production-figures/Fig4.pdf")
 ```
 
 
@@ -1834,7 +1848,7 @@ fig3 <- c_specs_var_comb %>%
   #scale_y_sqrt() +
   scale_colour_manual(values = pal_coral_proxies,
                       guide = guide_legend(reverse = TRUE)) +
-    labs(x = "SD SST [°C]", y = "SD Sr/Ca [mmol/mol]",
+    labs(x = "SD SST [°C]",
        colour = "") +
   theme_bw()+
   theme(panel.grid = element_blank(), 
@@ -1849,9 +1863,11 @@ fig3 <- c_specs_var_comb %>%
 
 fig3 
 
+
 ggsave(plot = fig3,
+       device = cairo_pdf,
        width = 5, height = 5,
-       filename = "production-figures/Fig3.tiff")
+       filename = "production-figures/Fig3.pdf")
 ```
 
 ```{r}
@@ -1883,7 +1899,7 @@ c_specs_var_comb %>%
               lty = 2) +
   theme_bw() +
   scale_color_brewer("", type = "qual", palette = "Set2") +
-    labs(x = "SD SST [°C]", y = "SD Sr/Ca [mmol/mol]",
+    labs(x = "SD SST [°C]", y = expression("SD Sr/Ca [mmol mol"^{-1}*"]"),
        colour = "") +
   theme_bw()+
   theme(panel.grid = element_blank()
@@ -1914,7 +1930,7 @@ c_specs_var_comb %>%
   theme_bw() +
   scale_colour_manual(values = pal_coral_proxies, 
                       guide = guide_legend(reverse = TRUE)) +
-    labs(x = "SD SST [°C]", y = "SD Sr/Ca [mmol/mol]",
+    labs(x = "SD SST [°C]", y = expression("SD Sr/Ca [mmol mol"^{-1}*"]"),
        colour = "") +
   theme_bw()+
   theme(panel.grid = element_blank(), 
@@ -2126,8 +2142,9 @@ fig_SNR_vs_resids_low <- coral_specs_reg_mean_boot_degC %>%
 fig_SNR_vs_resids_low
 
 ggsave(plot = fig_SNR_vs_resids_low,
+       device = cairo_pdf,
        width = 7, height = 4,
-       filename = "production-figures/FigS4.tiff")
+       filename = "production-figures/FigS4.pdf")
 ```
 
 
@@ -2234,8 +2251,9 @@ fig_S5 <- coral_specs_n_pair_fband %>%
 fig_S5
 
 ggsave(plot = fig_S5,
-       width = 9, height = 4,
-       filename = "production-figures/FigS5.tiff")
+       device = cairo_pdf,
+       width = 9, height = 5,
+       filename = "production-figures/FigS5.pdf")
 
 
 ```
@@ -2437,8 +2455,9 @@ fig_S6 <- PlotSNRStackBoot(
 fig_S6
 
 ggsave(plot = fig_S6,
+       device = cairo_pdf,
        width = 7, height = 4,
-       filename = "production-figures/FigS6.tiff")
+       filename = "production-figures/FigS6.pdf")
 ```
 
 
@@ -2473,8 +2492,9 @@ fig_SNR_dist_SrCa <-  coral_specs_var_fband %>%
 fig_SNR_dist_SrCa
 
 ggsave(plot = fig_SNR_dist_SrCa,
+       device = cairo_pdf,
        width = 7, height = 4,
-       filename = "production-figures/FigS7.tiff")
+       filename = "production-figures/FigS7.pdf")
 ```
 
 # Simulate autocorrelated errors 
@@ -2592,8 +2612,9 @@ figS9 <- ex_dat_dec %>%
 
 
 ggsave(plot = figS9,
+       device = cairo_pdf,
        width = 7, height = 5,
-       filename = "production-figures/FigS9.tiff")
+       filename = "production-figures/FigS9.pdf")
 
 ```
 
