@@ -1,10 +1,10 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# Dolman-et-al-2025-corals-exaggerate
+# Dolman-et-al-2026-corals-exaggerate
 
 This repository contains the data and code required to reproduce the
-analyses in Dolman et al (2025) in three files:
+analyses in Dolman et al (2026) in three files:
 
 - `01-processes-CH2K-gSST-data.qmd`
 - `02-find-coral-pairs-attach-gSST.qmd`
@@ -43,10 +43,10 @@ Dolman, A., McPartland, M., Felis, T. & Laepple, T. Coral records
 exaggerate past decadal tropical climate variability. Preprint at
 <https://doi.org/10.21203/rs.3.rs-3924954/v1> (2025).
 
-## Summary table of records used.
+## Data summary
 
-A summary of the records used in the main analysis of Dolman et
-al. (2026)
+A summary of the records from CoralHydro2k that were used in the main
+analysis of Dolman et al. (2026)
 
 ``` r
 table_summary_of_paired_records <- readRDS("data/table_summary_of_paired_records.RDS")

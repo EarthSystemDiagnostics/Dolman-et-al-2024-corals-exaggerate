@@ -11,9 +11,9 @@ knitr::opts_chunk$set(
 )
 ```
 
-# Dolman-et-al-2025-corals-exaggerate
+# Dolman-et-al-2026-corals-exaggerate
 
-This repository contains the data and code required to reproduce the analyses in Dolman et al (2025) in three files:
+This repository contains the data and code required to reproduce the analyses in Dolman et al (2026) in three files:
 
 * `01-processes-CH2K-gSST-data.qmd`
 * `02-find-coral-pairs-attach-gSST.qmd`
