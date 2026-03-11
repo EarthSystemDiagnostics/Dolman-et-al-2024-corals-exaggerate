@@ -281,7 +281,7 @@ knitr::kable(genus_count)
 ## Used records + meta data
 
 ```{r}
-table_S1 <- coral_pairs_sub %>%
+table_summary_of_paired_records <- coral_pairs_sub %>%
   filter(dist_km <= 100) %>%
   group_by(pair, dist_km, paleoData_variableName, paleoData_TSid, genus) %>%
   summarise(duration = round(diff(range(year.dec))),
@@ -290,16 +290,14 @@ table_S1 <- coral_pairs_sub %>%
             last_joint_year = round(mean(last_joint_year.dec))
             ) %>%
   left_join(., ch2k_d18O_SrCa_meta) %>%
-  select(paleoData_variableName, pair, dist_km, paleoData_TSid,
+  select(paleoData_variableName, paleoData_TSid, pair, dist_km, 
          paleoData_archiveSpecies,
          duration, first_joint_year, last_joint_year,
          geo_ocean, geo_siteName,
          pub1_firstauthor, pub1_year) %>%
   arrange(paleoData_variableName, desc(duration)) 
 
-knitr::kable(table_S1)
-
-writexl::write_xlsx(table_S1, "tableS1.xlsx")
+saveRDS(table_summary_of_paired_records, "../data/table_summary_of_paired_records.RDS")
 ```
 
 
