@@ -1488,6 +1488,18 @@ ggsave(plot = fig_blog,
        device = cairo_pdf,
        width = 6, height = 3,
        filename = "fig_blog.pdf")
+
+ggsave(plot = fig_blog,
+       #device = cairo_png,
+       width = 6, height = 3,
+       dpi = 300,
+       filename = "fig_blog.png")
+
+ggsave(plot = fig_blog,
+       #device = cairo_png,
+       width = 6, height = 3,
+       #dpi = 300,
+       filename = "fig_blog.svg")
 ```
 
 
