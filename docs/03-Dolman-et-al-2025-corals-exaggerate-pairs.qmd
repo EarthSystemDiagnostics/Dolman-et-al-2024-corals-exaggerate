@@ -600,6 +600,8 @@ rr <- fig_sd_dec +
 fig_var_ill <- patchwork::wrap_plots(l, r) 
 fig_var_ill
 
+if (!dir.exists("production-figures")) dir.create("production-figures", recursive = TRUE)
+
 ggsave(plot = fig_var_ill,
        device = cairo_pdf,
        width = 7, height = 4,
@@ -1495,11 +1497,11 @@ ggsave(plot = fig_blog,
        dpi = 300,
        filename = "fig_blog.png")
 
-ggsave(plot = fig_blog,
-       #device = cairo_png,
-       width = 6, height = 3,
-       #dpi = 300,
-       filename = "fig_blog.svg")
+#ggsave(plot = fig_blog,
+#       #device = cairo_png,
+#       width = 6, height = 3,
+#       #dpi = 300,
+#      filename = "fig_blog.svg")
 ```
 
 
